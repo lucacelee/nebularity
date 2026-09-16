@@ -118,7 +118,7 @@ code {
     margin-left: auto;
     margin-right: auto;
     margin-top: 1em;
-    background-image: url("../public/images/button.png");
+    background-image: url("../images/button.png");
     image-rendering: pixelated;
     background-size: 100%;
     width: 160px;
@@ -164,7 +164,7 @@ code {
 
 #press {
     display: inline-block;
-    background-image: url("../public/images/button_press.png");
+    background-image: url("../images/button_press.png");
     background-size: 100%;
     width: 160px;
     height: 40px;
@@ -175,12 +175,30 @@ code {
     transition: background-color 0.3s ease;
 }
 .button:hover {
-    background-image: url("../public/images/button_hover.png");
+    background-image: url("../images/button_hover.png");
 }
 .button:active{
-    background-image: url("../public/images/button_press.png");
+    background-image: url("../images/button_press.png");
     max-width: 160px;
     max-height: 40px;
+}
+
+#footer {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+}
+
+.footer-item {
+    display: block;
+    padding: 1rem;
+    font-family: Inter, Roboto, 'Helvetica Neue', 'Arial Nova', 'Nimbus Sans', Arial, sans-serif;
+}
+
+.footer-item a {
+    text-decoration: none;
+    color: black;
 }
 
 
