@@ -8,13 +8,16 @@
   "scripts": {
     "dev": "astro dev",
     "lint": "eslint .",
+    "check": "astro check",
     "build": "astro build",
     "preview": "astro preview",
     "astro": "astro"
   },
   "dependencies": {
+    "@astrojs/check": "^0.9.10",
     "astro": "^7.3.2",
     "jiti": "^2.7.0",
+    "typescript": "^6.0.3",
     "zod": "^4.6.5"
   },
   "allowScripts": {
