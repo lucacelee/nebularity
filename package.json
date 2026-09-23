@@ -14,7 +14,8 @@
   },
   "dependencies": {
     "astro": "^7.3.2",
-    "jiti": "^2.7.0"
+    "jiti": "^2.7.0",
+    "zod": "^4.6.5"
   },
   "allowScripts": {
     "esbuild": true
