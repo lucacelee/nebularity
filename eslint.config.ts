@@ -7,4 +7,6 @@ export default defineConfig([
   { files: ["**/*.{js,mjs,cjs,ts,mts,cts}"], plugins: { js }, extends: ["js/recommended"], languageOptions: { globals: globals.browser } },
   { files: ["**/*.js"], languageOptions: { sourceType: "commonjs" } },
   tseslint.configs.recommended,
+  { rules: { "@typescript-eslint/no-explicit-any": "off", } },
+  { files: ["**/.astro/**"], rules: { "@typescript-eslint/no-empty-object-type": "off", "@typescript-eslint/triple-slash-reference": "off", } }
 ]);
