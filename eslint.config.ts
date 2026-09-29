@@ -8,5 +8,6 @@ export default defineConfig([
   { files: ["**/*.js"], languageOptions: { sourceType: "commonjs" } },
   tseslint.configs.recommended,
   { rules: { "@typescript-eslint/no-explicit-any": "off", } },
-  { files: ["**/.astro/**"], rules: { "@typescript-eslint/no-empty-object-type": "off", "@typescript-eslint/triple-slash-reference": "off", } }
+  { files: ["**/.astro/**"], rules: { "@typescript-eslint/no-empty-object-type": "off", "@typescript-eslint/triple-slash-reference": "off", } },
+  { ignores: ["cdk/**"] }
 ]);
