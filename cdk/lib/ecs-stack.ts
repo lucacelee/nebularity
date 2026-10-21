@@ -11,7 +11,7 @@ export class EcrStack extends cdk.Stack {
   constructor(scope: cdk.App, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    this.repository = new ecr.Repository(this, 'AstroRepository', {
+    this.repository = new ecr.Repository(this, 'Nebularity', {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
@@ -61,7 +61,7 @@ export class EcsStack extends cdk.Stack {
       minHealthyPercent: 100,
       circuitBreaker: { rollback: true },
       healthCheck: {
-        command: ['CMD-SHELL', 'wget --no-verbose --tries=1 --spider http://localhost:4321/api/health/live || exit 1'],
+        command: ['CMD-SHELL', 'wget --no-verbose --tries=1 --spider http://127.0.0.1:4321/api/health || exit 1'],
         timeout: cdk.Duration.seconds(3),
         startPeriod: cdk.Duration.seconds(30),
       },
@@ -74,7 +74,7 @@ export class EcsStack extends cdk.Stack {
     });
 
     service.targetGroup.configureHealthCheck({
-      path: '/api/health/ready',
+      path: '/api/health',
       healthyThresholdCount: 2,
       unhealthyThresholdCount: 3,
     });
