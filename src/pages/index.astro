@@ -1,17 +1,19 @@
 ---
-import Footer from '../components/Footer.astro';
-import Welcome from '../components/Welcome.astro';
-import Layout from '../layouts/Layout.astro';
+import Footer from "../components/Footer.astro";
+import Planets from "../components/Planets.astro";
+import Layout from "../layouts/Layout.astro";
 
 // Welcome to Astro! Wondering what to do next? Check out the Astro documentation at https://docs.astro.build
 // Don't want to use any of this? Delete everything in this file, the `assets`, `components`, and `layouts` directories, and start fresh.
 ---
+
 <head>
-	<link rel="preload" href="../images/button.png" as="image" type="image/png" />
-	<link rel="preload" href="../images/button_press.png" as="image" type="image/png" />
-	<link rel="preload" href="../images/button_hover.png" as="image" type="image/png" />
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width" />
+	<title>Solar System</title>
 </head>
+
 <Layout>
-	<Welcome />
+	<Planets />
 	<Footer />
 </Layout>

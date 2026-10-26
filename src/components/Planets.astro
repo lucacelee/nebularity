@@ -1,0 +1,28 @@
+---
+import "../styles/solar-system.css";
+---
+
+<main>
+    <h1>Solar System</h1>
+
+    <div class="controls">
+        <button id="toggle-animation">Pause animation</button>
+        <button id="reset-position"> Reset to real-world position </button>
+    </div>
+
+    <p id="date"></p>
+    <p id="status">Loading orbital data...</p>
+
+    <svg
+        id="solar-system"
+        viewBox="0 0 1000 1000"
+        role="img"
+        aria-label="Solar system with orbital paths"
+    >
+        <circle id="sun" cx="500" cy="500" r="18"></circle>
+        <g id="orbits"></g>
+        <g id="planets"></g>
+    </svg>
+</main>
+
+<script src="../scripts/solar-system.ts"></script>
