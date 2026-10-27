@@ -79,7 +79,7 @@ test('uses small Linux x86-64 task defaults without NAT gateways', () => {
     ContainerDefinitions: Match.arrayWith([Match.objectLike({
       PortMappings: [{ ContainerPort: 4321, Protocol: 'tcp' }],
       HealthCheck: Match.objectLike({
-        Command: ['CMD-SHELL', 'wget --no-verbose --tries=1 --spider http://localhost:4321/api/health/live || exit 1'],
+        Command: ['CMD-SHELL', 'wget --no-verbose --tries=1 --spider http://127.0.0.1:4321/api/health/live || exit 1'],
       }),
     })]),
   });
