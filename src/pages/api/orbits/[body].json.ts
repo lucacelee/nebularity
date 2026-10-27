@@ -1,4 +1,5 @@
 import type { APIRoute } from "astro";
+import { getStaleWhileRevalidate } from "../../../lib/stale-cache";
 
 const BODY_IDS: Record<string, string> = {
     mercury: "199",
@@ -18,14 +19,10 @@ function horizonsDate(date: Date): string {
     return date.toISOString().replace("T", " ").slice(0, 19);
 }
 
-export const GET: APIRoute = async ({ params }) => {
-    const name = params.body?.toLowerCase();
-    const id = name ? BODY_IDS[name] : undefined;
-
-    if (!id) {
-        return Response.json({ error: "Unknown planet" }, { status: 404 });
-    }
-
+async function fetchFreshOrbit(
+    name: string,
+    id: string,
+): Promise<Response> {
     const epochUtc = new Date();
     const startTdb = new Date(epochUtc.getTime() + TDB_MINUS_UTC_MS);
     const stopTdb = new Date(startTdb.getTime() + DAY_MS);
@@ -203,4 +200,70 @@ export const GET: APIRoute = async ({ params }) => {
         epochUtc: epochUtc.toISOString(),
         elements,
     });
+};
+
+export const GET: APIRoute = async ({ params }) => {
+    const name = params.body?.toLowerCase();
+    const id = name ? BODY_IDS[name] : undefined;
+
+    if (!name || !id) {
+        return Response.json(
+            { error: "Unknown planet" },
+            { status: 404 },
+        );
+    }
+
+    try {
+        // Include the target and reference centre in the key.
+        // A moon orbiting a planet will need a different key.
+        const cacheKey = `horizons:elements:${id}:center=500@10`;
+
+        const cached = await getStaleWhileRevalidate(
+            cacheKey,
+            async () => {
+                const response = await fetchFreshOrbit(name, id);
+
+                // Never cache error responses.
+                if (!response.ok) {
+                    const payload = await response
+                        .clone()
+                        .json()
+                        .catch(() => null) as { error?: string } | null;
+
+                    throw new Error(
+                        payload?.error ??
+                        `Horizons returned HTTP ${response.status}`,
+                    );
+                }
+
+                return await response.json() as unknown;
+            },
+        );
+
+        return Response.json(cached.value, {
+            headers: {
+                // Keep the browser from maintaining its own
+                // competing cache. Our server controls freshness.
+                "Cache-Control": "no-store",
+
+                // Useful for debugging the cache behaviour.
+                "X-Orbit-Cache": cached.status,
+                "X-Orbit-Data-Fetched-At":
+                    new Date(cached.fetchedAt).toISOString(),
+                "X-Orbit-Cache-Expires-At":
+                    new Date(cached.expiresAt).toISOString(),
+            },
+        });
+    } catch (error: unknown) {
+        console.error(`[Orbit cache: ${name}]`, error);
+
+        return Response.json(
+            {
+                error: error instanceof Error
+                    ? error.message
+                    : "Could not load orbital data",
+            },
+            { status: 502 },
+        );
+    }
 };
