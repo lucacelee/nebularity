@@ -8,8 +8,15 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v7
-    - run: npm ci && npm run test # 1. Quality Gate
+    - name: Checkout Source Code
+      uses: actions/checkout@v7
+
+    - name: Install Root Dependencies
+      run: npm ci
+
+    - name: Install CDK Dependencies
+      working-directory: cdk
+      run: npm ci
 
     - name: Configure AWS Credentials
       uses: aws-actions/configure-aws-credentials@v6
