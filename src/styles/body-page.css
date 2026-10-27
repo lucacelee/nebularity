@@ -1,3 +1,7 @@
+body {
+  background-color: #080b16;
+}
+
 .body-page {
   --page-bg: #070d19;
   --panel-text: #eff5ff;
