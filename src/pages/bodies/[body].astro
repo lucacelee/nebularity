@@ -3,12 +3,14 @@ import Layout from "../../layouts/Layout.astro";
 import MoonSystem from "../../components/MoonSystem.astro";
 import { loadBodyPage } from "../../lib/body-page-data";
 import "../../styles/body-page.css";
+import "../../styles/view-transitions.css";
 
 const {
   bodyId,
   body,
   pageName,
   loadFailed,
+  dataNotice,
   centreImage,
   moonReferences,
   parentId,
@@ -18,7 +20,7 @@ const {
 } = await loadBodyPage(Astro.params.body);
 ---
 
-<Layout title={`${pageName} | Solar System`}>
+<Layout title={`${pageName} | Nebularity`}>
   <main class="body-page">
     <div class="body-page-inner">
       <nav class="body-breadcrumb" aria-label="Breadcrumb">
@@ -46,11 +48,6 @@ const {
               moons={moonReferences}
               centreImage={centreImage}
             />
-
-            <div class="orbital-legend">
-              <span class="legend-dot" aria-hidden="true"></span>
-              <span>Select a moon to inspect it</span>
-            </div>
           </section>
 
           <aside class="body-details" aria-labelledby="body-title">
@@ -67,6 +64,8 @@ const {
                 </p>
               )}
             </div>
+
+            {dataNotice && <p class="body-data-notice" role="status">{dataNotice}</p>}
 
             <section class="stat-grid" aria-label={`${pageName} key facts`}>
               {mainStats.map((stat) => (
@@ -118,6 +117,8 @@ const {
 
             <p class="data-source">
               Data: <a href="https://api.le-systeme-solaire.net/en/" target="_blank" rel="noreferrer">Solar System OpenData</a>
+              <span aria-hidden="true"> · </span>
+              <a href="https://ssd.jpl.nasa.gov/horizons/" target="_blank" rel="noreferrer">NASA/JPL Horizons</a>
             </p>
           </aside>
         </div>
@@ -127,7 +128,7 @@ const {
           <h1>{loadFailed ? "Could not load this body" : "Body not found"}</h1>
           <p>
             {loadFailed
-              ? "The Solar System OpenData service could not be reached. Check the server API key and try again."
+              ? "The body-data service could not be reached and no local fallback exists for this object. Try again when the service is available."
               : "No body was found for this URL."}
           </p>
           <a class="back-link" href="/">Return to the Solar System</a>
