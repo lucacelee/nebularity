@@ -37,6 +37,9 @@
 
 .wordmark-mark {
   color: #a8caff;
+  display: inline-block;
+  min-width: 1rem;
+  min-height: 1rem;
   font-size: 1.25rem;
 }
 
