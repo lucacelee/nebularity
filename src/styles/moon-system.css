@@ -1,0 +1,82 @@
+.moon-orbit-visual {
+  display: grid;
+  width: 100%;
+  align-content: center;
+  justify-items: center;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+.moon-orbit-diagram {
+  display: block;
+  width: min(100%, min(78vh, 760px));
+  min-width: 0;
+  height: auto;
+  overflow: visible;
+}
+
+.moon-orbit-ring {
+  fill: none;
+  stroke: #9eb8df;
+  stroke-opacity: var(--orbit-opacity, 0.13);
+  stroke-width: 1;
+}
+
+.moon-orbit-glow {
+  pointer-events: none;
+}
+
+.moon-parent-halo {
+  fill: #a7c4ff;
+  fill-opacity: 0.055;
+  stroke: #9eb8df;
+  stroke-opacity: 0.22;
+  stroke-width: 1;
+}
+
+.moon-parent-image {
+  filter: drop-shadow(0 0 18px rgb(115 160 255 / 18%));
+}
+
+.moon-parent-fallback {
+  fill: #f2c66d;
+  filter: drop-shadow(0 0 20px rgb(242 198 109 / 24%));
+}
+
+.moon-orbit-dot {
+  fill: #dbe8ff;
+  stroke: #07101e;
+  stroke-width: 1.5;
+  transition: r 140ms ease, fill 140ms ease;
+}
+
+.moon-orbit-diagram a:hover .moon-orbit-dot,
+.moon-orbit-diagram a:focus-visible .moon-orbit-dot {
+  r: 5.5;
+  fill: #ffd77c;
+}
+
+.moon-orbit-diagram a:focus-visible {
+  outline: none;
+}
+
+.moon-orbit-caption {
+  max-width: 32rem;
+  margin: 0;
+  color: #9caac4;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  text-align: center;
+}
+
+@media (max-width: 900px) {
+  .moon-orbit-diagram {
+    width: min(100%, 680px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .moon-orbit-dot {
+    transition: none;
+  }
+}

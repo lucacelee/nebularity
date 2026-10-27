@@ -1,0 +1,138 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import MoonSystem from "../../components/MoonSystem.astro";
+import { loadBodyPage } from "../../lib/body-page-data";
+import "../../styles/body-page.css";
+
+const {
+  bodyId,
+  body,
+  pageName,
+  loadFailed,
+  centreImage,
+  moonReferences,
+  parentId,
+  parentName,
+  mainStats,
+  facts,
+} = await loadBodyPage(Astro.params.body);
+---
+
+<Layout title={`${pageName} | Solar System`}>
+  <main class="body-page">
+    <div class="body-page-inner">
+      <nav class="body-breadcrumb" aria-label="Breadcrumb">
+        <a class="back-link" href="/">← Back to the Solar System</a>
+        {body?.aroundPlanet && parentId && (
+          <span class="parent-link">
+            Satellite of <a href={`/bodies/${parentId}/`}>{parentName}</a>
+          </span>
+        )}
+      </nav>
+
+      {body ? (
+        <div class="body-explorer">
+          <section class="orbital-panel" aria-label={`${pageName} and its moons`}>
+            <div class="orbital-panel-heading">
+              <p class="panel-eyebrow">ORBITAL VIEW</p>
+              <span class="orbit-count">
+                {moonReferences.length.toLocaleString("en-GB")} moon{moonReferences.length === 1 ? "" : "s"}
+              </span>
+            </div>
+
+            <MoonSystem
+              bodyId={bodyId}
+              bodyName={pageName}
+              moons={moonReferences}
+              centreImage={centreImage}
+            />
+
+            <div class="orbital-legend">
+              <span class="legend-dot" aria-hidden="true"></span>
+              <span>Select a moon to inspect it</span>
+            </div>
+          </section>
+
+          <aside class="body-details" aria-labelledby="body-title">
+            <div class="details-heading">
+              <p class="details-eyebrow">SOLAR SYSTEM DATABASE</p>
+              <h1 id="body-title">{pageName}</h1>
+              {body.bodyType && <p class="body-type">{body.bodyType}</p>}
+              {body.name && body.englishName && body.name !== body.englishName && (
+                <p class="alternate-name">API name: {body.name}</p>
+              )}
+              {body.isPlanet && (
+                <p class="body-summary">
+                  Explore {pageName}, its physical characteristics, and the satellites listed for it.
+                </p>
+              )}
+            </div>
+
+            <section class="stat-grid" aria-label={`${pageName} key facts`}>
+              {mainStats.map((stat) => (
+                <article class="stat-card">
+                  <h2>{stat.label}</h2>
+                  <p>{stat.value ?? "Not available"}</p>
+                </article>
+              ))}
+            </section>
+
+            <section class="detail-section" aria-labelledby="details-title">
+              <div class="detail-section-heading">
+                <h2 id="details-title">Physical and orbital data</h2>
+                <span>{facts.length} fields</span>
+              </div>
+
+              {facts.length > 0 ? (
+                <dl class="fact-list">
+                  {facts.map((fact) => (
+                    <div class="fact-row">
+                      <dt>{fact.label}</dt>
+                      <dd>{fact.value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              ) : (
+                <p class="muted-note">No additional characteristics are available for this body.</p>
+              )}
+            </section>
+
+            {moonReferences.length > 0 && (
+              <section class="detail-section moon-list-section" aria-labelledby="moon-list-title">
+                <div class="detail-section-heading">
+                  <h2 id="moon-list-title">Known moons</h2>
+                  <span>{moonReferences.length.toLocaleString("en-GB")}</span>
+                </div>
+                <ul class="body-moon-list">
+                  {moonReferences.map((moon) => (
+                    <li>
+                      <a href={`/bodies/${moon.id}/`}>
+                        <span>{moon.name}</span>
+                        <span class="moon-link-arrow" aria-hidden="true">↗</span>
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+
+            <p class="data-source">
+              Data: <a href="https://api.le-systeme-solaire.net/en/" target="_blank" rel="noreferrer">Solar System OpenData</a>
+            </p>
+          </aside>
+        </div>
+      ) : (
+        <section class="body-load-error" role="status">
+          <p class="details-eyebrow">SOLAR SYSTEM DATABASE</p>
+          <h1>{loadFailed ? "Could not load this body" : "Body not found"}</h1>
+          <p>
+            {loadFailed
+              ? "The Solar System OpenData service could not be reached. Check the server API key and try again."
+              : "No body was found for this URL."}
+          </p>
+          <a class="back-link" href="/">Return to the Solar System</a>
+        </section>
+      )}
+    </div>
+  </main>
+</Layout>

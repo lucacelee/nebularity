@@ -1,0 +1,104 @@
+---
+import "../styles/moon-system.css";
+import type { ResolvedMoonReference } from "../lib/solar-system-data";
+
+interface Props {
+  bodyId: string;
+  bodyName: string;
+  moons: ResolvedMoonReference[];
+  centreImage?: string;
+}
+
+const { bodyId, bodyName, moons, centreImage } = Astro.props;
+const centre = 360;
+const innerOrbitRadius = 86;
+const outerOrbitRadius = 316;
+const goldenAngle = 2.399963229728653;
+
+const moonOrbits = moons.map((moon, index) => {
+  const fraction = moons.length === 1
+    ? 0.42
+    : (index + 1) / (moons.length + 1);
+  const radius = innerOrbitRadius + fraction * (outerOrbitRadius - innerOrbitRadius);
+  const angle = index * goldenAngle;
+
+  return {
+    ...moon,
+    radius,
+    x: centre + Math.cos(angle) * radius,
+    y: centre + Math.sin(angle) * radius,
+  };
+});
+
+const orbitOpacity = moons.length > 80 ? 0.055 : moons.length > 30 ? 0.09 : 0.17;
+const moonRadius = moons.length > 100 ? 2.1 : moons.length > 40 ? 2.7 : 3.6;
+---
+
+<div class="moon-orbit-visual">
+  <svg
+    class="moon-orbit-diagram"
+    viewBox="0 0 720 720"
+    role="img"
+    aria-label={`Schematic moon orbit diagram for ${bodyName}`}
+  >
+    <title>Moons of {bodyName} — schematic orbits, not to scale</title>
+    <defs>
+      <radialGradient id={`body-glow-${bodyId}`}>
+        <stop offset="0%" stop-color="#91baff" stop-opacity="0.18" />
+        <stop offset="100%" stop-color="#91baff" stop-opacity="0" />
+      </radialGradient>
+    </defs>
+
+    <circle class="moon-orbit-glow" cx={centre} cy={centre} r="166" fill={`url(#body-glow-${bodyId})`} />
+
+    {moonOrbits.map((moon) => (
+      <circle
+        class="moon-orbit-ring"
+        cx={centre}
+        cy={centre}
+        r={moon.radius}
+        style={`--orbit-opacity: ${orbitOpacity};`}
+      />
+    ))}
+
+    <circle class="moon-parent-halo" cx={centre} cy={centre} r="66" />
+
+    {moonOrbits.map((moon) => (
+      <a href={`/bodies/${moon.id}/`} aria-label={`View ${moon.name}`}>
+        <title>{moon.name}</title>
+        <circle
+          class="moon-orbit-dot"
+          cx={moon.x}
+          cy={moon.y}
+          r={moonRadius}
+        />
+      </a>
+    ))}
+
+    {centreImage ? (
+      <image
+        class="moon-parent-image"
+        href={centreImage}
+        x="300"
+        y="300"
+        width="120"
+        height="120"
+        preserveAspectRatio="xMidYMid meet"
+        transition:name={`body-${bodyId}`}
+      />
+    ) : (
+      <circle class="moon-parent-fallback" cx={centre} cy={centre} r="28" />
+    )}
+  </svg>
+
+  {moons.length > 0 ? (
+    <p class="moon-orbit-caption">
+      {moons.length.toLocaleString()} known moon{moons.length === 1 ? "" : "s"} shown.
+      Orbit spacing and moon positions are illustrative, not measured.
+    </p>
+  ) : (
+    <p class="moon-orbit-caption">
+      No moons are currently listed for {bodyName}. The central body is shown on its own.
+    </p>
+  )}
+</div>
