@@ -1,21 +1,40 @@
 ---
 import Footer from "../components/Footer.astro";
 import Planets from "../components/Planets.astro";
-import Layout from "../layouts/Layout.astro";
 import ScaleControl from "../components/ScaleControl.astro";
-
-// Welcome to Astro! Wondering what to do next? Check out the Astro documentation at https://docs.astro.build
-// Don't want to use any of this? Delete everything in this file, the `assets`, `components`, and `layouts` directories, and start fresh.
+import SimulationControls from "../components/SimulationControls.astro";
+import Layout from "../layouts/Layout.astro";
+import "../styles/home-page.css";
+import "../styles/view-transitions.css";
 ---
 
-<head>
-	<meta charset="UTF-8" />
-	<meta name="viewport" content="width=device-width" />
-	<title>Solar System</title>
-</head>
+<Layout title="Nebularity | Explore the Solar System">
+  <div class="home-page">
+    <header class="home-page-header">
+      <a class="wordmark" href="/" aria-label="Nebularity home">
+        <span class="wordmark-mark" aria-hidden="true">✦</span>
+        <span>Nebularity</span>
+      </a>
 
-<Layout>
-	<Planets />
-	<ScaleControl />
-	<Footer />
+      <div class="home-title-block">
+        <p class="home-eyebrow">AN INTERACTIVE CELESTIAL ATLAS</p>
+        <h1>Explore the Solar System</h1>
+        <p class="home-intro">
+          Follow the planets through time, zoom into the inner worlds, and open a body to explore its moons and physical data.
+        </p>
+      </div>
+    </header>
+
+    <main class="home-main">
+      <Planets />
+
+      <section class="home-controls" aria-label="View and simulation settings">
+        <ScaleControl />
+        <div class="home-controls-divider" aria-hidden="true"></div>
+        <SimulationControls />
+      </section>
+    </main>
+
+    <Footer />
+  </div>
 </Layout>
