@@ -1,8 +1,9 @@
 import type { APIRoute } from "astro";
-import { solarSystemReady } from "../../../scripts/solar-system";
+import { Readiness } from "../../../lib/signal-ready";
 
 export const GET: APIRoute = async () => {
-    if (!solarSystemReady) {
+    let up: boolean = Readiness.isReady();
+    if (!up) {
         return new Response(JSON.stringify({
             status: 'starting'
         }), { status: 503, headers: { 'Content-Type': 'application/json' } });
