@@ -7,7 +7,7 @@ import {
 } from "../lib/orbit";
 import { SOLAR_SYSTEM_BODY_IDS } from "../lib/solar-system-bodies";
 
-export var solarSystemReady: boolean = false;
+export let solarSystemReady: boolean = false;
 
 const BODIES: readonly string[] = SOLAR_SYSTEM_BODY_IDS;
 
