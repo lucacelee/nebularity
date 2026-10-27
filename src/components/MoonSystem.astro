@@ -24,8 +24,8 @@ const initialOrbitCount = 12;
   <svg
     class="moon-system-svg"
     viewBox="0 0 420 420"
-    role="img"
-    aria-label={`Schematic orbital view of ${bodyName} and its moons`}
+    role="group"
+    aria-label={`Interactive orbital view of ${bodyName} and its moons`}
   >
     <defs>
       <radialGradient id="moon-system-glow">
@@ -34,30 +34,32 @@ const initialOrbitCount = 12;
       </radialGradient>
     </defs>
 
-    <circle class="moon-system-glow" cx="210" cy="210" r="92" fill="url(#moon-system-glow)" />
+    <circle class="moon-system-glow" cx="210" cy="210" r="68" fill="url(#moon-system-glow)" />
     <g class="moon-orbits" data-moon-orbits aria-hidden="true"></g>
+    <g class="moon-markers" data-moon-markers></g>
 
-    <circle
-      class="moon-system-centre-fallback"
-      cx="210"
-      cy="210"
-      r="18"
-      style={!centreImage ? `view-transition-name: body-${bodyId};` : undefined}
-    />
-    {centreImage && (
+    {centreImage ? (
       <image
         class="moon-system-centre-image"
         href={centreImage}
-        x="182"
-        y="182"
-        width="56"
-        height="56"
+        x="166"
+        y="166"
+        width="88"
+        height="88"
         preserveAspectRatio="xMidYMid meet"
         style={`view-transition-name: body-${bodyId};`}
+        aria-label={bodyName}
+      />
+    ) : (
+      <circle
+        class="moon-system-centre-fallback"
+        cx="210"
+        cy="210"
+        r="22"
+        style={`view-transition-name: body-${bodyId};`}
+        aria-label={bodyName}
       />
     )}
-
-    <g class="moon-markers" data-moon-markers></g>
   </svg>
 
   <div class="moon-system-footer">

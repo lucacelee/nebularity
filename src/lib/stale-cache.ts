@@ -12,6 +12,14 @@ export interface CachedResult<T> {
   expiresAt: number;
 }
 
+export interface CacheOptions {
+  /**
+   * Use the shared fetch queue. Set false only when the loader manages its own
+   * upstream request queue or calls other cached loaders internally.
+   */
+  queue?: boolean;
+}
+
 const DEFAULT_TTL_SECONDS = 60 * 60;
 const DEFAULT_REQUEST_GAP_MS = 250;
 
@@ -78,13 +86,17 @@ function enqueueRequest<T>(loader: () => Promise<T>): Promise<T> {
 function fetchAndStore<T>(
   key: string,
   loader: () => Promise<T>,
+  useSharedQueue: boolean,
 ): Promise<T> {
   const existing = inFlight.get(key);
   if (existing) return existing as Promise<T>;
 
   const job = (async () => {
     try {
-      const value = await enqueueRequest(loader);
+      const value = useSharedQueue
+        ? await enqueueRequest(loader)
+        : await loader();
+
       cache.set(key, { value, fetchedAt: Date.now() });
       return value;
     } finally {
@@ -99,9 +111,11 @@ function fetchAndStore<T>(
 export async function getStaleWhileRevalidate<T>(
   key: string,
   loader: () => Promise<T>,
+  options: CacheOptions = {},
 ): Promise<CachedResult<T>> {
   const entry = cache.get(key) as CacheEntry<T> | undefined;
   const ttlMs = getTtlMs();
+  const useSharedQueue = options.queue !== false;
 
   // FAST PATH: fresh cache hits return immediately. They never wait on
   // the upstream request queue, and different cache hits can run together.
@@ -117,7 +131,7 @@ export async function getStaleWhileRevalidate<T>(
   // STALE PATH: return the saved value immediately, while a single
   // throttled background refresh updates the cache for the next request.
   if (entry) {
-    void fetchAndStore(key, loader).catch((error: unknown) => {
+    void fetchAndStore(key, loader, useSharedQueue).catch((error: unknown) => {
       console.error(`[Data cache] Background refresh failed for "${key}"`, error);
     });
 
@@ -131,7 +145,7 @@ export async function getStaleWhileRevalidate<T>(
 
   // MISS PATH: no saved value exists, so the caller must wait for the
   // first successful fetch. Only this upstream fetch is throttled.
-  const value = await fetchAndStore(key, loader);
+  const value = await fetchAndStore(key, loader, useSharedQueue);
   const stored = cache.get(key) as CacheEntry<T>;
 
   return {

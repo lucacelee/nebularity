@@ -29,6 +29,9 @@ const BODY_FIELDS = [
   "aphelion",
   "eccentricity",
   "inclination",
+  "mainAnomaly",
+  "argPeriapsis",
+  "longAscNode",
   "axialTilt",
 ].join(",");
 
@@ -74,6 +77,9 @@ export interface SolarBody {
   aphelion?: number | null;
   eccentricity?: number | null;
   inclination?: number | null;
+  mainAnomaly?: number | null;
+  argPeriapsis?: number | null;
+  longAscNode?: number | null;
   axialTilt?: number | null;
 }
 
@@ -227,8 +233,14 @@ export async function getSolarSystemMoonCatalogue(): Promise<CachedResult<SolarB
     "mass",
     "meanRadius",
     "semimajorAxis",
+    "perihelion",
+    "aphelion",
     "eccentricity",
     "inclination",
+    "mainAnomaly",
+    "argPeriapsis",
+    "longAscNode",
+    "sideralOrbit",
   ].join(",");
 
   const pageSize = 100;
@@ -301,6 +313,20 @@ export async function getSolarSystemMoonCatalogue(): Promise<CachedResult<SolarB
       return records;
     },
   );
+}
+
+/**
+ * Read a satellite record from the shared catalogue. This avoids a separate
+ * API request for every moon when Horizons has no ephemeris for one of them.
+ */
+export async function getSolarBodyFromCatalogue(
+  bodyId: string,
+): Promise<SolarBody | undefined> {
+  const id = bodyId.trim().toLowerCase();
+  if (!/^[a-z0-9-]+$/.test(id)) return undefined;
+
+  const cached = await getSolarSystemMoonCatalogue();
+  return cached.value.find((body) => body.id.toLowerCase() === id);
 }
 
 export async function getMoonsFromSolarSystemCatalogue(

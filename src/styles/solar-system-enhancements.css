@@ -1,14 +1,15 @@
-.solar-system-stage {
-  width: min(100%, 1500px);
-  margin-inline: auto;
+.home-page .solar-system-stage {
+  width: 100%;
+  max-width: none;
+  margin-inline: 0;
   overflow: visible;
 }
 
-.solar-system-stage-header {
-  display: flex;
+.home-page .solar-system-stage-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: end;
-  justify-content: space-between;
-  gap: 1.5rem;
+  gap: clamp(1rem, 3vw, 2.5rem);
 }
 
 .stage-eyebrow {
@@ -19,7 +20,12 @@
   letter-spacing: 0.18em;
 }
 
-.solar-system-stage-header h2 {
+.home-page .solar-system-stage-header > div {
+  min-width: 0;
+  max-width: 64rem;
+}
+
+.home-page .solar-system-stage-header h2 {
   margin: 0;
   color: #eaf2ff;
   font-size: clamp(1.35rem, 2.5vw, 2.05rem);
@@ -186,9 +192,9 @@
 }
 
 @media (max-width: 780px) {
-  .solar-system-stage-header {
+  .home-page .solar-system-stage-header {
+    grid-template-columns: minmax(0, 1fr);
     align-items: start;
-    flex-direction: column;
   }
 
   .simulation-actions {
@@ -206,4 +212,9 @@
   .simulation-action {
     transition: none;
   }
+}
+
+.planet-link:focus-visible .planet-sprite {
+  opacity: 1;
+  filter: drop-shadow(0 0 7px rgba(174, 211, 255, 0.82));
 }

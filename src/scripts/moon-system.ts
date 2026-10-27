@@ -123,6 +123,13 @@ function initialiseMoonSystem(root: HTMLElement): void {
   const activeStatus = status;
   const activeMoreButton = moreButton;
 
+  const abortController = new AbortController();
+  document.addEventListener(
+    "astro:before-swap",
+    () => abortController.abort(),
+    { once: true },
+  );
+
   const parentId = root.dataset.parentId ?? "";
   const parentName = root.dataset.parentName ?? parentId;
   const moons = parseMoonReferences(root.dataset.moons);
@@ -136,26 +143,27 @@ function initialiseMoonSystem(root: HTMLElement): void {
     path.dataset.moonId = moon.id;
     activeOrbitLayer.appendChild(path);
 
+    const link = makeSvg("a");
+    link.setAttribute("href", `/bodies/${moon.id}/`);
+    link.setAttribute("aria-label", `Inspect ${moon.name}`);
+    link.setAttribute("data-body-transition-link", moon.id);
+    link.setAttribute("data-astro-prefetch", "hover");
+    link.classList.add("moon-marker-link");
+
     const marker = makeSvg("circle");
     marker.classList.add("moon-marker");
+    marker.dataset.moonId = moon.id;
     marker.setAttribute("r", "3.4");
     marker.setAttribute("cx", String(SVG_CENTRE));
     marker.setAttribute("cy", String(SVG_CENTRE));
-    marker.setAttribute("tabindex", "0");
-    marker.setAttribute("role", "link");
-    marker.setAttribute("aria-label", `Inspect ${moon.name}`);
+    marker.setAttribute("aria-hidden", "true");
+    marker.setAttribute("data-body-transition-source", "");
     marker.style.cursor = "pointer";
+    // This name supports navigating back from a moon's own inspection page.
+    // The click handler removes duplicates and keeps only the chosen source.
     marker.style.setProperty("view-transition-name", `body-${moon.id}`);
-    marker.addEventListener("click", () => {
-      window.location.href = `/bodies/${moon.id}/`;
-    });
-    marker.addEventListener("keydown", (event: KeyboardEvent) => {
-      if (event.key === "Enter" || event.key === " ") {
-        event.preventDefault();
-        window.location.href = `/bodies/${moon.id}/`;
-      }
-    });
-    activeMarkerLayer.appendChild(marker);
+    link.appendChild(marker);
+    activeMarkerLayer.appendChild(link);
 
     views.push({ moon, path, marker });
   }
@@ -179,7 +187,9 @@ function initialiseMoonSystem(root: HTMLElement): void {
     updateButton();
 
     const batchEnd = Math.min(nextIndex + MOON_BATCH_SIZE, views.length);
+    const requestedInBatch = batchEnd - nextIndex;
     let successfulInBatch = 0;
+    let unavailableInBatch = 0;
 
     for (; nextIndex < batchEnd; nextIndex++) {
       const view = views[nextIndex];
@@ -191,9 +201,26 @@ function initialiseMoonSystem(root: HTMLElement): void {
       const url = `/api/orbits/${encodeURIComponent(view.moon.id)}.json?${query}`;
 
       try {
-        const response = await fetch(url);
+        const response = await fetch(url, {
+          signal: abortController.signal,
+        });
+
+        if (abortController.signal.aborted || !root.isConnected) return;
+
+        if (response.status === 422) {
+          // The provider and local catalogue both have no usable orbit for this
+          // object. It is a known data limitation, not a runtime exception.
+          view.marker.classList.add("is-fallback");
+          view.path.classList.add("is-unavailable");
+          unavailableInBatch++;
+          continue;
+        }
+
         if (!response.ok) {
-          throw new Error(`Orbit request returned HTTP ${response.status}.`);
+          const details = await response.text();
+          throw new Error(
+            `Orbit request returned HTTP ${response.status}. ${details}`,
+          );
         }
 
         const data = await response.json() as OrbitData;
@@ -203,6 +230,10 @@ function initialiseMoonSystem(root: HTMLElement): void {
         view.ellipse = ellipse;
         successfulInBatch++;
       } catch (error) {
+        if (abortController.signal.aborted || !root.isConnected) {
+          return;
+        }
+
         // Keep the moon visible at its placeholder position. The server-side
         // cache retains any earlier successful orbit for the next attempt.
         view.marker.classList.add("is-fallback");
@@ -219,11 +250,24 @@ function initialiseMoonSystem(root: HTMLElement): void {
 
     if (views.length === 0) {
       activeStatus.textContent = "No moon references are available for this body.";
+    } else if (successfulInBatch === 0 && unavailableInBatch === requestedInBatch) {
+      activeStatus.textContent = "No orbital solution was available for this batch. Moon markers remain visible; the server will retry after the cache expires.";
     } else if (successfulInBatch === 0) {
       activeStatus.textContent = "Moon positions are temporarily unavailable. Cached orbits will be reused when available.";
     } else {
-      const readyCount = views.filter((view) => view.data).length;
-      activeStatus.textContent = `${readyCount} of ${views.length} moon orbits loaded. Orbit sizes are normalised to fit the diagram.`;
+      const readyViews = views.filter((view) => view.data);
+      const readyCount = readyViews.length;
+      const approximateCount = readyViews.filter(
+        (view) => view.data?.source === "Solar System OpenData (approximate)",
+      ).length;
+      const approximationNote = approximateCount > 0
+        ? ` ${approximateCount} use approximate catalogue elements.`
+        : "";
+
+      activeStatus.textContent =
+        `${readyCount} of ${views.length} moon orbits loaded. `
+        + `Orbit sizes are normalised to fit the diagram.`
+        + approximationNote;
     }
   }
 

@@ -8,9 +8,9 @@ import {
   type BodyMass,
 } from "./solar-system-data";
 import {
-  findJplMoonById,
+  findFallbackMoonById,
   getJplMass,
-  getJplMoonList,
+  getFallbackMoonList,
   type JplMoonReference,
   type JplObjectKind,
 } from "./nasa-jpl";
@@ -230,7 +230,7 @@ async function findMoonReferences(
   if (directReferences.length > 0) return directReferences;
 
   if (!body) {
-    return (await getJplMoonList(bodyId)).map(({ id, name }) => ({ id, name }));
+    return (await getFallbackMoonList(bodyId)).map(({ id, name }) => ({ id, name }));
   }
 
   try {
@@ -240,7 +240,7 @@ async function findMoonReferences(
     console.warn(`[Body page: ${bodyId}] Moon catalogue fallback failed`, error);
   }
 
-  return (await getJplMoonList(bodyId)).map(({ id, name }) => ({ id, name }));
+  return (await getFallbackMoonList(bodyId)).map(({ id, name }) => ({ id, name }));
 }
 
 export async function loadBodyPage(
@@ -265,11 +265,11 @@ export async function loadBodyPage(
     // Keep well-known planets/dwarf planets available without a network call.
     body = makeOfflineBody(bodyId);
 
-    // The OpenData service may not recognise every JPL satellite identifier.
-    // Resolve known/cached NASA moon entries so their pages still work offline.
+    // The OpenData service may not recognise every satellite identifier.
+    // Resolve a well-known local moon entry so common pages still work offline.
     if (!body && bodyId) {
       try {
-        const jplMoon = await findJplMoonById(bodyId);
+        const jplMoon = await findFallbackMoonById(bodyId);
         if (jplMoon) {
           body = makeJplMoonBody(jplMoon);
         }

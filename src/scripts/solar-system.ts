@@ -24,6 +24,8 @@ const IMAGE_SIZE = 24;
 const DEFAULT_SIMULATED_DAYS_PER_SECOND = 10;
 const DAY_MS = 86_400_000;
 
+let cleanupSolarSystem: (() => void) | undefined;
+
 interface PlanetView {
   name: string;
   image: SVGImageElement;
@@ -98,6 +100,8 @@ function initialiseSolarSystem(): void {
 
   let planets: PlanetView[] = [];
   let playing = true;
+  let isActive = true;
+  let animationFrameId = 0;
   let simulationTime = Date.now();
   let lastFrame = 0;
   let simulatedDaysPerSecond = activeSpeedSlider
@@ -113,11 +117,17 @@ function initialiseSolarSystem(): void {
     activeSpeedOutput.value = formatSimulationSpeed(simulatedDaysPerSecond);
   }
 
-  function navigateToBody(name: string): void {
-    window.location.href = `/bodies/${name}/`;
-  }
+  function createPlanetImage(
+    name: string,
+    index: number,
+  ): { link: SVGAElement; image: SVGImageElement } {
+    const link = makeSvg("a");
+    link.setAttribute("href", `/bodies/${name}/`);
+    link.setAttribute("aria-label", `Inspect ${name}`);
+    link.setAttribute("data-body-transition-link", name);
+    link.setAttribute("data-astro-prefetch", "hover");
+    link.classList.add("planet-link");
 
-  function createPlanetImage(name: string, index: number): SVGImageElement {
     const image = makeSvg("image");
     const spacing = IMAGE_SIZE * 1.5;
     const offset = index - (BODIES.length - 1) / 2;
@@ -130,22 +140,17 @@ function initialiseSolarSystem(): void {
     image.setAttribute("height", String(IMAGE_SIZE));
     image.setAttribute("x", String(startingX));
     image.setAttribute("y", String(startingY));
-    image.setAttribute("aria-label", `Inspect ${name}`);
-    image.setAttribute("role", "link");
-    image.setAttribute("tabindex", "0");
+    image.setAttribute("aria-hidden", "true");
+    image.setAttribute("data-body-transition-source", "");
     image.classList.add("planet-sprite", "planet-placeholder");
     image.style.cursor = "pointer";
+
+    // The matching body page uses this exact dynamic name on its central image.
+    // A real SVG link gives cross-document View Transitions a user-initiated nav.
     image.style.setProperty("view-transition-name", `body-${name}`);
+    link.appendChild(image);
 
-    image.addEventListener("click", () => navigateToBody(name));
-    image.addEventListener("keydown", (event: KeyboardEvent) => {
-      if (event.key === "Enter" || event.key === " ") {
-        event.preventDefault();
-        navigateToBody(name);
-      }
-    });
-
-    return image;
+    return { link, image };
   }
 
   function getPlanetImagePosition(planet: PlanetView, date: Date) {
@@ -197,6 +202,8 @@ function initialiseSolarSystem(): void {
   }
 
   function render(): void {
+    if (!isActive) return;
+
     const date = new Date(simulationTime);
 
     for (const planet of planets) {
@@ -207,6 +214,8 @@ function initialiseSolarSystem(): void {
   }
 
   function animate(timestamp: number): void {
+    if (!isActive) return;
+
     if (playing && lastFrame !== 0 && simulatedDaysPerSecond !== 0) {
       const elapsedSeconds = (timestamp - lastFrame) / 1000;
       simulationTime += elapsedSeconds * simulatedDaysPerSecond * DAY_MS;
@@ -214,7 +223,7 @@ function initialiseSolarSystem(): void {
 
     lastFrame = timestamp;
     render();
-    requestAnimationFrame(animate);
+    animationFrameId = requestAnimationFrame(animate);
   }
 
   async function loadOnePlanet(name: string, index: number): Promise<boolean> {
@@ -229,6 +238,8 @@ function initialiseSolarSystem(): void {
       }
 
       const data = await response.json() as OrbitData;
+      if (!isActive || !activeSvg.isConnected) return false;
+
       const ellipse = createEllipse(data.elements);
       const path = makeSvg("path");
 
@@ -253,15 +264,15 @@ function initialiseSolarSystem(): void {
   activeOrbitLayer.replaceChildren();
   activePlanetLayer.replaceChildren();
   planets = BODIES.map((name, index) => {
-    const image = createPlanetImage(name, index);
-    activePlanetLayer.appendChild(image);
+    const { link, image } = createPlanetImage(name, index);
+    activePlanetLayer.appendChild(link);
     return { name, image };
   });
 
   activeStatus.textContent = "Loading current orbital data…";
   updateSpeedLabel();
   render();
-  requestAnimationFrame(animate);
+  animationFrameId = requestAnimationFrame(animate);
 
   // Do not throttle in the browser. The server-side cache queues upstream
   // NASA requests, while genuine cache hits return immediately in parallel.
@@ -278,24 +289,45 @@ function initialiseSolarSystem(): void {
     render();
   });
 
-  activeToggleButton.addEventListener("click", () => {
+  const handleToggle = (): void => {
     playing = !playing;
     activeToggleButton.textContent = playing ? "Pause animation" : "Resume animation";
-  });
+  };
 
-  activeResetButton.addEventListener("click", () => {
+  const handleReset = (): void => {
     simulationTime = Date.now();
     render();
-  });
+  };
 
-  activeSpeedSlider?.addEventListener("input", () => {
+  const handleSpeedInput = (): void => {
+    if (!activeSpeedSlider) return;
+
     simulatedDaysPerSecond = Number(activeSpeedSlider.value);
     if (!Number.isFinite(simulatedDaysPerSecond)) {
       simulatedDaysPerSecond = 0;
     }
     updateSpeedLabel();
-  });
+  };
+
+  activeToggleButton.addEventListener("click", handleToggle);
+  activeResetButton.addEventListener("click", handleReset);
+  activeSpeedSlider?.addEventListener("input", handleSpeedInput);
+
+  cleanupSolarSystem = (): void => {
+    isActive = false;
+    window.cancelAnimationFrame(animationFrameId);
+    activeSvg.dataset.solarSystemInitialised = "false";
+    activeToggleButton.removeEventListener("click", handleToggle);
+    activeResetButton.removeEventListener("click", handleReset);
+    activeSpeedSlider?.removeEventListener("input", handleSpeedInput);
+  };
+}
+
+function handleBeforeSwap(): void {
+  cleanupSolarSystem?.();
+  cleanupSolarSystem = undefined;
 }
 
 initialiseSolarSystem();
+document.addEventListener("astro:before-swap", handleBeforeSwap);
 document.addEventListener("astro:page-load", initialiseSolarSystem);

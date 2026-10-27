@@ -24,10 +24,10 @@ const {
   <main class="body-page">
     <div class="body-page-inner">
       <nav class="body-breadcrumb" aria-label="Breadcrumb">
-        <a class="back-link" href="/">← Back to the Solar System</a>
+        <a class="back-link" href="/" data-astro-prefetch="hover">← Back to the Solar System</a>
         {body?.aroundPlanet && parentId && (
           <span class="parent-link">
-            Satellite of <a href={`/bodies/${parentId}/`}>{parentName}</a>
+            Satellite of <a href={`/bodies/${parentId}/`} data-astro-prefetch="hover">{parentName}</a>
           </span>
         )}
       </nav>
@@ -105,8 +105,8 @@ const {
                 <ul class="body-moon-list">
                   {moonReferences.map((moon) => (
                     <li>
-                      <a href={`/bodies/${moon.id}/`}>
-                        <span>{moon.name}</span>
+                      <a href={`/bodies/${moon.id}/`} data-body-transition-link={moon.id} data-astro-prefetch="hover">
+                        <span data-body-transition-source>{moon.name}</span>
                         <span class="moon-link-arrow" aria-hidden="true">↗</span>
                       </a>
                     </li>
@@ -137,3 +137,7 @@ const {
     </div>
   </main>
 </Layout>
+
+<script>
+  import "../../scripts/body-transition-links";
+</script>

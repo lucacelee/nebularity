@@ -11,6 +11,13 @@
     #060b15;
 }
 
+.home-page .home-main {
+  display: block;
+  width: min(100%, 1500px);
+  max-width: none;
+  margin: 0 auto;
+}
+
 .home-page-header {
   width: min(100%, 1500px);
   margin: 0 auto clamp(1.3rem, 3vw, 2.5rem);

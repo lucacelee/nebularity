@@ -1,5 +1,10 @@
 import { getStaleWhileRevalidate, type CachedResult } from "./stale-cache";
 import type { OrbitalElements, OrbitData } from "./orbit";
+import {
+  getSolarBody,
+  getSolarBodyFromCatalogue,
+  type SolarBody,
+} from "./solar-system-data";
 
 const HORIZONS_URL = "https://ssd.jpl.nasa.gov/api/horizons.api";
 const HORIZONS_LOOKUP_URL = "https://ssd.jpl.nasa.gov/api/horizons_lookup.api";
@@ -8,6 +13,57 @@ const DAY_MS = 86_400_000;
 const JULIAN_UNIX_EPOCH = 2_440_587.5;
 const TDB_MINUS_UTC_MS = 69_184;
 const GRAVITATIONAL_CONSTANT_KM3_PER_KG_S2 = 6.67430e-20;
+
+const DEFAULT_JPL_REQUEST_GAP_MS = 250;
+
+let jplRequestQueue: Promise<void> = Promise.resolve();
+let nextJplRequestAt = 0;
+
+function getJplRequestGapMs(): number {
+  const raw = process.env.ORBIT_REQUEST_GAP_MS;
+  if (raw === undefined || raw.trim() === "") {
+    return DEFAULT_JPL_REQUEST_GAP_MS;
+  }
+
+  const milliseconds = Number(raw);
+  if (!Number.isFinite(milliseconds) || milliseconds < 0) {
+    return DEFAULT_JPL_REQUEST_GAP_MS;
+  }
+
+  return milliseconds;
+}
+
+function sleep(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+/**
+ * Serialise individual NASA/JPL HTTP requests and enforce a configurable gap
+ * between them. Cache loaders can therefore call other cached helpers without
+ * holding the shared cache queue and deadlocking nested requests.
+ */
+function fetchJpl(
+  input: string | URL,
+  init?: RequestInit,
+): Promise<Response> {
+  const request = jplRequestQueue.then(async () => {
+    const waitMs = Math.max(0, nextJplRequestAt - Date.now());
+    if (waitMs > 0) await sleep(waitMs);
+
+    try {
+      return await fetch(input, init);
+    } finally {
+      nextJplRequestAt = Date.now() + getJplRequestGapMs();
+    }
+  });
+
+  jplRequestQueue = request.then(
+    () => undefined,
+    () => undefined,
+  );
+
+  return request;
+}
 
 export type JplObjectKind = "planet" | "satellite" | "other";
 
@@ -46,10 +102,6 @@ interface HorizonsLookupPayload {
   error?: string;
 }
 
-interface MajorBodyRecord {
-  spkId: string;
-  name: string;
-}
 
 const KNOWN_SPK_IDS: Record<string, string> = {
   sun: "10",
@@ -137,9 +189,31 @@ const PRIMARY_BODY_NAMES: Record<string, string> = {
   deimos: "Deimos",
 };
 
+// The OpenData catalogue contains some satellite IDs/names in French.
+// Horizons lookup uses the English names, so canonicalise them before searching.
+const JPL_NAME_ALIASES: Record<string, string> = {
+  encelade: "Enceladus",
+  epimethee: "Epimetheus",
+  erriapo: "Erriapus",
+  promethee: "Prometheus",
+  pandore: "Pandora",
+  galatee: "Galatea",
+  naiade: "Naiad",
+  nereide: "Nereid",
+  phocee: "Phoebe",
+  rhea: "Rhea",
+  tethys: "Tethys",
+  dione: "Dione",
+  mimas: "Mimas",
+  callisto: "Callisto",
+  ganymede: "Ganymede",
+  europe: "Europa",
+  io: "Io",
+};
+
 /**
- * A small offline fallback for the main, commonly observed satellites.
- * The live NASA/JPL major-body list is preferred when available.
+ * A small offline fallback for commonly observed satellites. The cached
+ * Solar System OpenData moon catalogue is the preferred complete listing.
  * These are not claimed to be a complete list of every known satellite.
  */
 const COMMON_MOONS: Record<string, string[]> = {
@@ -242,7 +316,9 @@ export async function resolveJplSpkId(
 
   if (knownId) return knownId;
 
-  const name = cleanName(displayName);
+  const suppliedName = cleanName(displayName);
+  const name = JPL_NAME_ALIASES[slug] ?? suppliedName;
+
   if (!isSafeBodyName(name)) {
     throw new Error("The body name contains unsupported characters.");
   }
@@ -255,7 +331,7 @@ export async function resolveJplSpkId(
     url.searchParams.set("group", kind === "satellite" ? "sat" : kind === "planet" ? "pln" : "mb");
     url.searchParams.set("format", "json");
 
-    const response = await fetch(url, {
+    const response = await fetchJpl(url, {
       headers: {
         Accept: "application/json",
         "User-Agent": "Nebularity/1.0 (educational solar-system visualisation)",
@@ -265,11 +341,19 @@ export async function resolveJplSpkId(
 
     const payload = await response.json().catch(() => null) as HorizonsLookupPayload | null;
 
-    if (!response.ok || !payload) {
-      throw new Error(`NASA/JPL Horizons lookup failed with HTTP ${response.status}.`);
+    if (!payload) {
+      throw new Error(`NASA/JPL Horizons lookup returned invalid JSON (HTTP ${response.status}).`);
     }
 
-    if (payload.error) throw new Error(payload.error);
+    if (payload.error) {
+      throw new Error(
+        `NASA/JPL Horizons lookup failed with HTTP ${response.status}: ${payload.error}`,
+      );
+    }
+
+    if (!response.ok) {
+      throw new Error(`NASA/JPL Horizons lookup failed with HTTP ${response.status}.`);
+    }
 
     const entries = Array.isArray(payload.result) ? payload.result : [];
     const selected = selectLookupEntry(entries, name, kind);
@@ -282,7 +366,7 @@ export async function resolveJplSpkId(
       spkId: selected.spkid,
       resolvedName: selected.name ?? name,
     };
-  });
+  }, { queue: false });
 
   return cached.value.spkId;
 }
@@ -363,7 +447,7 @@ async function fetchOrbitalElements(
     ELM_LABELS: "NO",
   });
 
-  const response = await fetch(`${HORIZONS_URL}?${query}`, {
+  const response = await fetchJpl(`${HORIZONS_URL}?${query}`, {
     headers: {
       Accept: "application/json",
       "User-Agent": "Nebularity/1.0 (educational solar-system visualisation)",
@@ -402,31 +486,192 @@ async function fetchOrbitalElements(
  * `centreId` is omitted for heliocentric planet orbits, and supplied for a
  * moon so Horizons returns its orbit relative to its parent body.
  */
+export class OrbitProviderUnavailableError extends Error {
+  readonly statusCode = 503;
+
+  constructor(message: string) {
+    super(message);
+    this.name = "OrbitProviderUnavailableError";
+  }
+}
+
+const AU_IN_KILOMETRES = 149_597_870.7;
+const J2000_JULIAN_DATE = 2_451_545;
+const J2000_UTC = "2000-01-01T12:00:00.000Z";
+
+function finiteNumber(value: number | null | undefined): number | undefined {
+  if (typeof value !== "number" || !Number.isFinite(value)) return undefined;
+  return value;
+}
+
+/**
+ * Build a best-effort orbit from the OpenData catalogue. These catalogue
+ * elements are not a substitute for Horizons' epoch-specific osculating
+ * elements, so we label the result as approximate.
+ */
+async function getOpenDataOrbitFallback(
+  bodyId: string,
+  bodyName: string,
+  isSatellite: boolean,
+): Promise<OrbitData | undefined> {
+  let body: SolarBody | undefined;
+
+  // Most moon-orbit requests have a parent centre. Reuse the shared moon
+  // catalogue first so this fallback does not issue one HTTP request per moon.
+  if (isSatellite) {
+    try {
+      body = await getSolarBodyFromCatalogue(bodyId);
+    } catch {
+      // If the catalogue itself is unavailable, try the direct body endpoint.
+    }
+  }
+
+  if (!body) {
+    try {
+      const cachedBody = await getSolarBody(bodyId);
+      body = cachedBody.value;
+    } catch {
+      return undefined;
+    }
+  }
+
+  const perihelion = finiteNumber(body.perihelion);
+  const aphelion = finiteNumber(body.aphelion);
+  let semiMajorAxisKm = finiteNumber(body.semimajorAxis);
+
+  if (
+    (semiMajorAxisKm === undefined || semiMajorAxisKm <= 0)
+    && perihelion !== undefined
+    && aphelion !== undefined
+    && perihelion > 0
+    && aphelion > 0
+  ) {
+    semiMajorAxisKm = (perihelion + aphelion) / 2;
+  }
+
+  let eccentricity = finiteNumber(body.eccentricity);
+  if (
+    eccentricity === undefined
+    && perihelion !== undefined
+    && aphelion !== undefined
+    && perihelion > 0
+    && aphelion > 0
+  ) {
+    eccentricity = (aphelion - perihelion) / (aphelion + perihelion);
+  }
+
+  const periodDays = finiteNumber(body.sideralOrbit);
+  if (
+    semiMajorAxisKm === undefined
+    || semiMajorAxisKm <= 0
+    || eccentricity === undefined
+    || eccentricity < 0
+    || eccentricity >= 1
+    || periodDays === undefined
+    || periodDays <= 0
+  ) {
+    return undefined;
+  }
+
+  const inclinationDeg = finiteNumber(body.inclination) ?? 0;
+  const ascendingNodeDeg = finiteNumber(body.longAscNode) ?? 0;
+  const argumentPeriapsisDeg = finiteNumber(body.argPeriapsis) ?? 0;
+  const meanAnomalyDeg = finiteNumber(body.mainAnomaly) ?? 0;
+
+  return {
+    name: body.englishName?.trim() || body.name?.trim() || bodyName,
+    epochUtc: J2000_UTC,
+    source: "Solar System OpenData (approximate)",
+    elements: {
+      epochJD: J2000_JULIAN_DATE,
+      eccentricity,
+      inclinationDeg,
+      ascendingNodeDeg,
+      argumentPeriapsisDeg,
+      meanAnomalyDeg,
+      semiMajorAxisAU: semiMajorAxisKm / AU_IN_KILOMETRES,
+      periodDays,
+    },
+  };
+}
+
+function isUnsupportedJplOrbit(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /could not uniquely identify|no ephemeris for target|no parseable orbital|invalid orbital elements|lookup rejected|HTTP 400|does not provide orbital data/i.test(message);
+}
+
+function isTransientJplFailure(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /WLDINI|LTKERNL|execution-control file|HTTP (408|429|5\d\d)|timed out|abort|fetch failed|network|invalid JSON/i.test(message);
+}
+
+/**
+ * Retrieve orbital elements. The cache key is based on the OpenData body ID
+ * and centre, not a live SPK lookup, so old successful entries are returned
+ * even when NASA/JPL's lookup service is temporarily unavailable.
+ */
 export async function getJplOrbit(
   bodyId: string,
   bodyName: string,
   centreId?: string,
   centreName?: string,
-): Promise<CachedResult<OrbitData>> {
+): Promise<CachedResult<OrbitData | null>> {
   const bodySlug = slugify(bodyId);
-  const kind: JplObjectKind = centreId ? "satellite" : "planet";
-  const targetSpkId = await resolveJplSpkId(bodySlug, bodyName, kind);
+  const centreSlug = centreId ? slugify(centreId) : "sun";
+  const cacheKey = `nasa-jpl:elements:body=${bodySlug}:centre=${centreSlug}`;
 
-  let centreSpkId = "10";
-  let centreSlug = "sun";
+  return getStaleWhileRevalidate<OrbitData | null>(cacheKey, async () => {
+    try {
+      const kind: JplObjectKind = centreId ? "satellite" : "planet";
+      const targetSpkId = await resolveJplSpkId(bodySlug, bodyName, kind);
 
-  if (centreId) {
-    centreSlug = slugify(centreId);
-    const centreDisplayName = cleanName(centreName ?? PRIMARY_BODY_NAMES[centreSlug] ?? centreSlug);
-    const centreKind: JplObjectKind = KNOWN_SPK_IDS[centreSlug] ? "planet" : "other";
-    centreSpkId = await resolveJplSpkId(centreSlug, centreDisplayName, centreKind);
-  }
+      let centreSpkId = "10";
+      if (centreId) {
+        const centreDisplayName = cleanName(
+          centreName ?? PRIMARY_BODY_NAMES[centreSlug] ?? centreSlug,
+        );
+        const centreKind: JplObjectKind = KNOWN_SPK_IDS[centreSlug]
+          ? "planet"
+          : "other";
+        centreSpkId = await resolveJplSpkId(
+          centreSlug,
+          centreDisplayName,
+          centreKind,
+        );
+      }
 
-  const key = `nasa-jpl:elements:target=${targetSpkId}:centre=${centreSpkId}`;
+      const data = await fetchOrbitalElements(bodySlug, targetSpkId, centreSpkId);
+      return { ...data, source: "NASA/JPL Horizons" };
+    } catch (jplError) {
+      const fallback = await getOpenDataOrbitFallback(bodySlug, bodyName, Boolean(centreId));
+      if (fallback) {
+        // This is an expected fallback path, not a failed page request.
+        // The response includes source metadata so the UI can disclose it.
+        return fallback;
+      }
 
-  return getStaleWhileRevalidate<OrbitData>(key, () =>
-    fetchOrbitalElements(bodySlug, targetSpkId, centreSpkId),
-  );
+      const detail = jplError instanceof Error
+        ? jplError.message
+        : String(jplError);
+
+      if (isUnsupportedJplOrbit(jplError)) {
+        // A missing trajectory is a body-data limitation, not a gateway error.
+        // Cache null for the TTL so the same unsupported object is not retried
+        // on every render. Expiry will trigger another attempt later.
+        return null;
+      }
+
+      if (isTransientJplFailure(jplError)) {
+        throw new OrbitProviderUnavailableError(
+          `NASA/JPL is temporarily unavailable and no cached/OpenData orbit could be used. ${detail}`,
+        );
+      }
+
+      throw new OrbitProviderUnavailableError(
+        `Could not retrieve orbital data from NASA/JPL. ${detail}`,
+      );
+    }
+  }, { queue: false });
 }
 
 function massFromHorizonsText(text: string): JplMass | undefined {
@@ -462,18 +707,18 @@ function massFromHorizonsText(text: string): JplMass | undefined {
   return { massValue: value, massExponent: exponent };
 }
 
-/** NASA/JPL physical-data fallback. Values are returned in the OpenData mass shape. */
+/** NASA/JPL physical-data fallback. Missing mass is negatively cached as null. */
 export async function getJplMass(
   bodyId: string,
   bodyName: string,
   kind: JplObjectKind,
 ): Promise<JplMass | undefined> {
-  try {
-    const bodySlug = slugify(bodyId);
-    const targetSpkId = await resolveJplSpkId(bodySlug, bodyName, kind);
-    const key = `nasa-jpl:object-data:${targetSpkId}`;
+  const bodySlug = slugify(bodyId);
+  const key = `nasa-jpl:object-data:body=${bodySlug}:kind=${kind}`;
 
-    const cached = await getStaleWhileRevalidate(key, async () => {
+  try {
+    const cached = await getStaleWhileRevalidate<JplMass | null>(key, async () => {
+      const targetSpkId = await resolveJplSpkId(bodySlug, bodyName, kind);
       const query = new URLSearchParams({
         format: "json",
         COMMAND: `'${targetSpkId}'`,
@@ -481,7 +726,7 @@ export async function getJplMass(
         MAKE_EPHEM: "NO",
       });
 
-      const response = await fetch(`${HORIZONS_URL}?${query}`, {
+      const response = await fetchJpl(`${HORIZONS_URL}?${query}`, {
         headers: {
           Accept: "application/json",
           "User-Agent": "Nebularity/1.0 (educational solar-system visualisation)",
@@ -491,151 +736,40 @@ export async function getJplMass(
 
       const payload = await response.json().catch(() => null) as HorizonsPayload | null;
 
-      if (!response.ok || !payload || payload.error || !payload.result) {
-        throw new Error(payload?.error ?? `NASA/JPL object data failed with HTTP ${response.status}.`);
+      if (!payload) {
+        throw new Error(`NASA/JPL mass response was invalid JSON (HTTP ${response.status}).`);
       }
 
-      const mass = massFromHorizonsText(payload.result);
-      if (!mass) {
-        throw new Error(`NASA/JPL has no parseable mass value for "${bodyName}".`);
+      if (payload.error) {
+        throw new Error(payload.error);
       }
 
-      return mass;
-    });
+      if (!response.ok || !payload.result) {
+        throw new Error(`NASA/JPL object data returned HTTP ${response.status}.`);
+      }
 
-    return cached.value;
-  } catch (error) {
-    console.warn(`[NASA/JPL mass fallback: ${bodyId}]`, error);
+      // Some small moons have no published mass in the Horizons object summary.
+      // Cache that absence so we do not repeat the same request on every visit.
+      return massFromHorizonsText(payload.result) ?? null;
+    }, { queue: false });
+
+    return cached.value ?? undefined;
+  } catch {
+    // Missing mass is not fatal: the page can use OpenData, a local value for
+    // well-known bodies, or display “Not available”. Avoid logging an error on
+    // every visit for small moons whose mass has never been measured.
     return undefined;
   }
 }
 
-function parentForSatelliteSpkId(spkId: string): string | undefined {
-  const value = Number(spkId);
-  const planetCentreIds = new Set([
-    199, 299, 399, 499, 599, 699, 799, 899, 999,
-  ]);
-
-  // Planet-centre IDs share numeric ranges with natural satellites.
-  if (!Number.isFinite(value) || planetCentreIds.has(value)) {
-    return undefined;
-  }
-
-  if (value === 301) return "earth";
-  if (value === 401 || value === 402) return "mars";
-  if (value >= 501 && value < 600) return "jupiter";
-  if (value >= 601 && value < 700) return "saturn";
-  if (value >= 701 && value < 800) return "uranus";
-  if (value >= 801 && value < 900) return "neptune";
-  if (value >= 901 && value < 999) return "pluto";
-
-  return undefined;
-}
-
-function parseMajorBodyCatalog(text: string): MajorBodyRecord[] {
-  const bySpkId = new Map<string, MajorBodyRecord>();
-
-  for (const line of text.split(/\r?\n/)) {
-    const trimmed = line.trim();
-    if (trimmed === "") continue;
-
-    let spkId: string | undefined;
-    let name: string | undefined;
-
-    // Horizons' MB table uses columns separated by two or more spaces:
-    // ID, object name, designation, and aliases. Keep the first name column.
-    const columns = trimmed.split(/\s{2,}/);
-    if (columns.length >= 2 && /^\d{1,9}$/.test(columns[0])) {
-      spkId = columns[0];
-      name = columns[1].trim();
-    }
-
-    // Some variants put only an ID and name on each line.
-    if (!spkId || !name) {
-      const idFirst = trimmed.match(
-        /^(\d{3,9})\s+([\p{L}][\p{L}\p{N} ._'’()-]*)$/u,
-      );
-      if (idFirst) {
-        spkId = idFirst[1];
-        name = idFirst[2].trim();
-      }
-    }
-
-    // Some responses include entries such as "Io (501)".
-    if (!spkId || !name) {
-      const nameFirst = trimmed.match(
-        /\b([\p{L}][\p{L}\p{N} ._'’()-]*?)\s*\(\s*(\d{3,9})\s*\)/u,
-      );
-      if (nameFirst) {
-        name = nameFirst[1].trim();
-        spkId = nameFirst[2];
-      }
-    }
-
-    if (!spkId || !name || !parentForSatelliteSpkId(spkId)) continue;
-    if (/^(?:center|target|record|current|major|object|ephemeris|command|id)$/i.test(name)) {
-      continue;
-    }
-
-    bySpkId.set(spkId, { spkId, name });
-  }
-
-  return [...bySpkId.values()];
-}
 /**
- * NASA/JPL Horizons' MB search returns a major-body ID/name catalogue.
- * The parsed moon list is cached so the service is not queried per page view.
+ * Horizons does not expose a general public endpoint for enumerating every
+ * natural satellite with COMMAND=MB. That query was generating “No output
+ * possible” errors. Use the curated offline subset only after the cached
+ * Solar System OpenData moon catalogue has failed.
  */
-export async function getJplMoonList(parentId: string): Promise<JplMoonReference[]> {
+export async function getFallbackMoonList(parentId: string): Promise<JplMoonReference[]> {
   const parent = slugify(parentId);
-  try {
-    const cached = await getStaleWhileRevalidate("nasa-jpl:major-body-catalog:v2", async () => {
-      const query = new URLSearchParams({
-        format: "json",
-        COMMAND: "'MB'",
-        OBJ_DATA: "NO",
-        MAKE_EPHEM: "NO",
-      });
-
-      const response = await fetch(`${HORIZONS_URL}?${query}`, {
-        headers: {
-          Accept: "application/json",
-          "User-Agent": "Nebularity/1.0 (educational solar-system visualisation)",
-        },
-        signal: AbortSignal.timeout(15_000),
-      });
-
-      const payload = await response.json().catch(() => null) as HorizonsPayload | null;
-
-      if (!response.ok || !payload || payload.error || !payload.result) {
-        throw new Error(payload?.error ?? `NASA/JPL major-body catalogue failed with HTTP ${response.status}.`);
-      }
-
-      const records = parseMajorBodyCatalog(payload.result);
-      if (records.length < 5) {
-        throw new Error("Could not parse enough satellite records from the NASA/JPL major-body catalogue.");
-      }
-
-      return records;
-    });
-
-    const liveReferences = cached.value
-      .filter((record) => parentForSatelliteSpkId(record.spkId) === parent)
-      .map((record) => ({
-        id: slugify(record.name),
-        name: record.name,
-        spkId: record.spkId,
-        parentId: parent,
-      }))
-      .filter((record) => record.id.length > 0);
-
-    if (liveReferences.length > 0) {
-      return combineMoonReferences(parent, liveReferences);
-    }
-  } catch (error) {
-    console.warn(`[NASA/JPL moon-list fallback: ${parent}]`, error);
-  }
-
   return combineMoonReferences(
     parent,
     (COMMON_MOONS[parent] ?? []).map((name) => ({
@@ -646,23 +780,28 @@ export async function getJplMoonList(parentId: string): Promise<JplMoonReference
   );
 }
 
-
 /**
  * Used by body pages when the OpenData API does not recognise a satellite ID.
- * It searches the cached NASA/JPL moon lists and supplies the parent body too.
+ * It searches the limited local fallback lists and supplies the parent body.
  */
-export async function findJplMoonById(
+export async function findFallbackMoonById(
   bodyId: string,
 ): Promise<JplMoonReference | undefined> {
   const targetId = slugify(bodyId);
+  const canonicalName = JPL_NAME_ALIASES[targetId];
+  const canonicalId = canonicalName ? slugify(canonicalName) : targetId;
   const parents = Object.keys(COMMON_MOONS);
   const moonLists = await Promise.all(
-    parents.map((parent) => getJplMoonList(parent)),
+    parents.map((parent) => getFallbackMoonList(parent)),
   );
 
   for (const moonList of moonLists) {
-    const match = moonList.find((moon) => moon.id === targetId);
-    if (match) return match;
+    const match = moonList.find((moon) =>
+      moon.id === targetId || slugify(moon.name) === canonicalId,
+    );
+    if (match) {
+      return { ...match, id: targetId };
+    }
   }
 
   return undefined;
@@ -670,16 +809,15 @@ export async function findJplMoonById(
 
 function combineMoonReferences(
   parentId: string,
-  liveReferences: JplMoonReference[],
+  supplementalReferences: JplMoonReference[],
 ): JplMoonReference[] {
   const byId = new Map<string, JplMoonReference>();
 
-  // Prefer JPL catalogue names/IDs where supplied.
-  for (const moon of liveReferences) {
+  for (const moon of supplementalReferences) {
     byId.set(moon.id, moon);
   }
 
-  // Keep a useful list even if the JPL catalogue endpoint is temporarily down.
+  // Supplement with the local list when the primary moon catalogue is incomplete.
   for (const name of COMMON_MOONS[parentId] ?? []) {
     const id = slugify(name);
     if (!byId.has(id)) byId.set(id, { id, name, parentId });

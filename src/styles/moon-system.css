@@ -23,12 +23,14 @@
   fill: #d4e5ff;
   stroke: rgba(255, 255, 255, 0.65);
   stroke-width: 1;
-  filter: drop-shadow(0 0 14px rgba(123, 176, 255, 0.45));
+  filter: drop-shadow(0 0 10px rgba(123, 176, 255, 0.32));
 }
 
 .moon-system-centre-image {
-  filter: drop-shadow(0 0 12px rgba(123, 176, 255, 0.24));
+  filter: drop-shadow(0 0 10px rgba(123, 176, 255, 0.22));
   pointer-events: none;
+  position: relative;
+  z-index: 2;
 }
 
 .moon-orbit {
@@ -123,4 +125,9 @@
   .moon-system-more {
     transition: none;
   }
+}
+
+.moon-marker-link:focus-visible .moon-marker {
+  stroke: #ffffff;
+  stroke-width: 2.5;
 }

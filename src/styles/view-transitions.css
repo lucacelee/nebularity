@@ -1,37 +1,47 @@
-/* Cross-document View Transitions are progressive enhancement. */
+/*
+ * Cross-document View Transitions are progressive enhancement. Both the home
+ * page and /bodies/[body]/ import this stylesheet.
+ *
+ * Planet sprites and moon markers receive matching dynamic names, such as
+ * body-jupiter or body-encelade, on their source and destination documents.
+ */
 @view-transition {
   navigation: auto;
 }
 
+/* Keep the page fade subtle so it does not overpower the moving body. */
 ::view-transition-old(root) {
-  animation: page-leave 180ms ease-in both;
+  animation: page-leave 140ms ease-in both;
 }
 
 ::view-transition-new(root) {
-  animation: page-enter 320ms cubic-bezier(0.2, 0.7, 0.25, 1) both;
+  animation: page-enter 240ms cubic-bezier(0.2, 0.78, 0.2, 1) both;
 }
 
+/* Shared named elements use the browser's geometry interpolation. */
 ::view-transition-group(*) {
-  animation-duration: 360ms;
-  animation-timing-function: cubic-bezier(0.2, 0.7, 0.25, 1);
+  animation-duration: 620ms;
+  animation-timing-function: cubic-bezier(0.2, 0.78, 0.2, 1);
+}
+
+/* Keep each snapshot composited independently during the move. */
+::view-transition-image-pair(*) {
+  isolation: auto;
 }
 
 @keyframes page-leave {
   to {
     opacity: 0;
-    transform: translateY(-4px) scale(0.995);
   }
 }
 
 @keyframes page-enter {
   from {
     opacity: 0;
-    transform: translateY(8px) scale(0.995);
   }
 
   to {
     opacity: 1;
-    transform: translateY(0) scale(1);
   }
 }
 

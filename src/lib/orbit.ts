@@ -23,6 +23,8 @@ export interface OrbitData {
   name: string;
   epochUtc: string;
   elements: OrbitalElements;
+  /** Identifies whether this is a Horizons solution or a best-effort fallback. */
+  source?: "NASA/JPL Horizons" | "Solar System OpenData (approximate)";
 }
 
 const TAU = 2 * Math.PI;

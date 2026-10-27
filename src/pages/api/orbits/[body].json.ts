@@ -1,5 +1,5 @@
 import type { APIRoute } from "astro";
-import { getJplOrbit } from "../../../lib/nasa-jpl";
+import { getJplOrbit, OrbitProviderUnavailableError } from "../../../lib/nasa-jpl";
 
 function validSlug(value: string | null): value is string {
   return typeof value === "string" && /^[a-z0-9-]+$/i.test(value);
@@ -63,27 +63,39 @@ export const GET: APIRoute = async ({ params, request }) => {
 
   try {
     const cached = await getJplOrbit(bodyId, bodyName, centreId, centreName);
+    const cacheHeaders = {
+      // The server cache is authoritative; don't let the browser keep a
+      // separate copy that can outlive the configured server-side TTL.
+      "Cache-Control": "no-store",
+      "X-Orbit-Cache": cached.status,
+      "X-Orbit-Data-Fetched-At": new Date(cached.fetchedAt).toISOString(),
+      "X-Orbit-Cache-Expires-At": new Date(cached.expiresAt).toISOString(),
+    };
 
-    return Response.json(cached.value, {
-      headers: {
-        // The server cache is authoritative; don't let the browser keep a
-        // separate copy that can outlive the configured server-side TTL.
-        "Cache-Control": "no-store",
-        "X-Orbit-Cache": cached.status,
-        "X-Orbit-Data-Fetched-At": new Date(cached.fetchedAt).toISOString(),
-        "X-Orbit-Cache-Expires-At": new Date(cached.expiresAt).toISOString(),
-      },
-    });
+    if (cached.value === null) {
+      return Response.json(
+        {
+          unavailable: true,
+          error: `No orbital solution is currently available for ${bodyName}.`,
+        },
+        { status: 422, headers: cacheHeaders },
+      );
+    }
+
+    return Response.json(cached.value, { headers: cacheHeaders });
   } catch (error: unknown) {
-    console.error(`[Orbit API: ${bodyId}]`, error);
+    const message = error instanceof Error
+      ? error.message
+      : "Could not load orbital data from NASA/JPL.";
 
-    return Response.json(
-      {
-        error: error instanceof Error
-          ? error.message
-          : "Could not load orbital data from NASA/JPL.",
-      },
-      { status: 502 },
-    );
+    if (error instanceof OrbitProviderUnavailableError) {
+      // This really is an upstream outage, not an unsupported object. A 503
+      // accurately signals that a retry may succeed when the provider recovers.
+      console.warn(`[Orbit API: ${bodyId}] ${message}`);
+      return Response.json({ error: message }, { status: 503 });
+    }
+
+    console.warn(`[Orbit API: ${bodyId}] ${message}`);
+    return Response.json({ error: message }, { status: 503 });
   }
 };
