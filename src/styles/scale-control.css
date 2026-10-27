@@ -1,0 +1,75 @@
+.scale-control {
+  box-sizing: border-box;
+  width: min(100%, 28rem);
+  margin: 0.75rem auto 1rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--border-color, #5558);
+  border-radius: 0.75rem;
+  color: inherit;
+  background: var(--panel-background, #8881);
+}
+
+.scale-heading,
+.scale-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.scale-heading {
+  margin-bottom: 0.45rem;
+  font-weight: 600;
+}
+
+#solar-scale-value {
+  font-variant-numeric: tabular-nums;
+}
+
+#solar-scale {
+  display: block;
+  width: 100%;
+  cursor: zoom-in;
+  accent-color: var(--accent-color, #e6b84a);
+}
+
+.scale-footer {
+  margin-top: 0.2rem;
+  font-size: 0.85rem;
+  opacity: 0.85;
+}
+
+#reset-solar-scale {
+  padding: 0.25rem 0.6rem;
+  border: 1px solid currentColor;
+  border-radius: 0.4rem;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+#reset-solar-scale:hover {
+  background: var(--panel-hover-background, #8882);
+}
+
+#solar-scale-help {
+  margin: 0.55rem 0 0;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  opacity: 0.75;
+}
+
+/* Keep a large, responsive SVG viewport available to the zoom camera. */
+#solar-system {
+  display: block;
+  width: min(100%, 1000px);
+  max-width: 100%;
+  height: auto;
+  overflow: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scale-control * {
+    scroll-behavior: auto;
+  }
+}

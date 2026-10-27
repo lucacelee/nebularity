@@ -1,0 +1,159 @@
+.moon-system {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  min-width: 0;
+  width: 100%;
+}
+
+.moon-system-svg {
+  display: block;
+  width: min(100%, 680px);
+  height: auto;
+  aspect-ratio: 1;
+  margin-inline: auto;
+  overflow: visible;
+}
+
+.moon-system-glow {
+  pointer-events: none;
+}
+
+.moon-system-centre-fallback {
+  fill: #d4e5ff;
+  stroke: rgba(255, 255, 255, 0.65);
+  stroke-width: 1;
+  filter: drop-shadow(0 0 10px rgba(123, 176, 255, 0.32));
+}
+
+.moon-system-centre-image {
+  filter: drop-shadow(0 0 10px rgba(123, 176, 255, 0.22));
+  pointer-events: none;
+  position: relative;
+  z-index: 2;
+}
+
+.moon-orbit {
+  fill: none;
+  stroke: rgba(155, 183, 222, 0.35);
+  stroke-width: 0.9;
+  stroke-dasharray: 3 5;
+}
+
+.moon-orbit.is-placeholder {
+  opacity: 0;
+}
+
+.moon-orbit.is-loaded {
+  opacity: 1;
+  transition: opacity 300ms ease-out;
+}
+
+.moon-orbit.is-unavailable {
+  opacity: 0.12;
+}
+
+.moon-marker {
+  fill: #e8f1ff;
+  stroke: #0b1426;
+  stroke-width: 1.1;
+  opacity: 0.42;
+  transition: cx 250ms ease-out, cy 250ms ease-out, opacity 220ms ease-out;
+  outline: none;
+}
+
+.moon-marker.is-loaded {
+  fill: #b7d9ff;
+  opacity: 1;
+  filter: drop-shadow(0 0 3px rgba(151, 198, 255, 0.65));
+}
+
+.moon-marker.is-fallback {
+  opacity: 0.4;
+}
+
+.moon-marker:focus-visible {
+  stroke: #ffffff;
+  stroke-width: 2.5;
+}
+
+.moon-system-footer {
+  display: grid;
+  gap: 0.65rem;
+  padding-inline: clamp(0rem, 2vw, 1.5rem);
+}
+
+.moon-system-note,
+.moon-system-status {
+  margin: 0;
+  color: #94a6c2;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.moon-system-more {
+  justify-self: start;
+  border: 1px solid rgba(158, 190, 235, 0.3);
+  border-radius: 999px;
+  padding: 0.65rem 1rem;
+  color: #e5efff;
+  background: rgba(41, 63, 98, 0.48);
+  font: inherit;
+  font-size: 0.88rem;
+  cursor: pointer;
+  transition: background 180ms ease, border-color 180ms ease, transform 180ms ease;
+}
+
+.moon-system-more:hover:not(:disabled) {
+  border-color: rgba(190, 216, 255, 0.7);
+  background: rgba(58, 84, 126, 0.7);
+  transform: translateY(-1px);
+}
+
+.moon-system-more:disabled {
+  cursor: progress;
+  opacity: 0.7;
+}
+
+.moon-system-more[hidden] {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .moon-orbit,
+  .moon-marker,
+  .moon-system-more {
+    transition: none;
+  }
+}
+
+.moon-marker-link:focus-visible .moon-marker {
+  stroke: #ffffff;
+  stroke-width: 2.5;
+}
+
+.moon-marker-link {
+  cursor: pointer;
+}
+
+.moon-marker-image {
+  opacity: 0.95;
+  filter: drop-shadow(0 0 3px rgba(151, 198, 255, 0.55));
+  transition: opacity 220ms ease-out, filter 220ms ease-out;
+}
+
+.moon-marker-image.is-loaded {
+  opacity: 1;
+  filter: drop-shadow(0 0 5px rgba(151, 198, 255, 0.72));
+}
+
+.moon-marker-image.is-fallback {
+  opacity: 0.4;
+  filter: grayscale(0.35);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .moon-marker-image {
+    transition: none;
+  }
+}

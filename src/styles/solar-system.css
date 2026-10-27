@@ -1,0 +1,58 @@
+body {
+  margin: 0;
+  background: #080b16;
+  color: #f0f0f0;
+  font-family: system-ui, sans-serif;
+}
+
+main {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+h1,
+#date {
+  text-align: center;
+}
+
+.controls {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+button {
+  padding: 0.65rem 1rem;
+  border: 1px solid #555;
+  border-radius: 0.5rem;
+  background: #1b2233;
+  color: white;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #2b354b;
+}
+
+#solar-system {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+#sun {
+  fill: #ffcc33;
+}
+
+.orbit-path {
+  fill: none;
+  stroke: #758096;
+  stroke-width: 1;
+  stroke-opacity: 0.6;
+}
+
+#status {
+  text-align: center;
+}
