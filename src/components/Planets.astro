@@ -1,28 +1,94 @@
 ---
 import "../styles/solar-system.css";
+import "../styles/solar-system-enhancements.css";
 ---
 
-<main>
-    <h1>Solar System</h1>
-
-    <div class="controls">
-        <button id="toggle-animation">Pause animation</button>
-        <button id="reset-position"> Reset to real-world position </button>
+<section class="solar-system-stage" aria-labelledby="solar-system-heading">
+  <header class="solar-system-stage-header">
+    <div>
+      <p class="stage-eyebrow">LIVE ORBITAL SIMULATION</p>
+      <h2 id="solar-system-heading">Our neighbourhood in space</h2>
+      <p class="stage-description">
+        Select a planet to inspect it. Zoom in to explore the rocky planets, or reverse time to watch the system move backwards.
+      </p>
     </div>
 
-    <p id="date"></p>
-    <p id="status">Loading orbital data...</p>
+    <div class="simulation-actions" aria-label="Animation controls">
+      <button id="toggle-animation" class="simulation-action" type="button">
+        Pause animation
+      </button>
+      <button id="reset-position" class="simulation-action simulation-action-secondary" type="button">
+        Reset to now
+      </button>
+    </div>
+  </header>
 
+  <p id="status" class="solar-system-status" role="status" aria-live="polite">
+    Loading current orbital data…
+  </p>
+
+  <div class="solar-system-viewport">
     <svg
-        id="solar-system"
-        viewBox="0 0 1000 1000"
-        role="img"
-        aria-label="Solar system with orbital paths"
+      id="solar-system"
+      class="solar-system-svg"
+      viewBox="0 0 1000 1000"
+      preserveAspectRatio="xMidYMid meet"
+      role="group"
+      aria-label="Interactive diagram of the Sun and the eight planets orbiting it"
     >
-        <circle id="sun" cx="500" cy="500" r="18"></circle>
-        <g id="orbits"></g>
-        <g id="planets"></g>
-    </svg>
-</main>
+      <defs>
+        <radialGradient id="sun-glow-gradient">
+          <stop offset="0%" stop-color="#ffcb68" stop-opacity="0.34" />
+          <stop offset="55%" stop-color="#ff9b45" stop-opacity="0.12" />
+          <stop offset="100%" stop-color="#ff8b35" stop-opacity="0" />
+        </radialGradient>
+      </defs>
 
-<script src="../scripts/solar-system.ts"></script>
+      <circle
+        class="sun-glow"
+        cx="500"
+        cy="500"
+        r="72"
+        fill="url(#sun-glow-gradient)"
+        aria-hidden="true"
+      />
+
+      <g id="orbits" aria-label="Planet orbits"></g>
+
+      <circle
+        class="sun-image-fallback"
+        cx="500"
+        cy="500"
+        r="14"
+        aria-hidden="true"
+      />
+      <image
+        id="sun-image"
+        class="sun-image"
+        href="/planets/sun.png"
+        x="476"
+        y="476"
+        width="48"
+        height="48"
+        preserveAspectRatio="xMidYMid meet"
+        role="img"
+        aria-label="The Sun"
+      />
+
+      <g id="planets" aria-label="Clickable planets"></g>
+    </svg>
+  </div>
+
+  <footer class="solar-system-stage-footer">
+    <p class="solar-system-time">
+      Simulation date: <time id="date">Synchronising simulation…</time>
+    </p>
+    <p class="solar-system-scale-note">
+      Planet sizes and distances are not shown to one common physical scale. Orbital positions are projected from cached or current orbital elements.
+    </p>
+  </footer>
+</section>
+
+<script>
+  import "../scripts/solar-system";
+</script>

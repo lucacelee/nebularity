@@ -1,82 +1,126 @@
-.moon-orbit-visual {
-  display: grid;
-  width: 100%;
-  align-content: center;
-  justify-items: center;
-  gap: 0.65rem;
+.moon-system {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
   min-width: 0;
+  width: 100%;
 }
 
-.moon-orbit-diagram {
+.moon-system-svg {
   display: block;
-  width: min(100%, min(78vh, 760px));
-  min-width: 0;
+  width: min(100%, 680px);
   height: auto;
+  aspect-ratio: 1;
+  margin-inline: auto;
   overflow: visible;
 }
 
-.moon-orbit-ring {
-  fill: none;
-  stroke: #9eb8df;
-  stroke-opacity: var(--orbit-opacity, 0.13);
-  stroke-width: 1;
-}
-
-.moon-orbit-glow {
+.moon-system-glow {
   pointer-events: none;
 }
 
-.moon-parent-halo {
-  fill: #a7c4ff;
-  fill-opacity: 0.055;
-  stroke: #9eb8df;
-  stroke-opacity: 0.22;
+.moon-system-centre-fallback {
+  fill: #d4e5ff;
+  stroke: rgba(255, 255, 255, 0.65);
   stroke-width: 1;
+  filter: drop-shadow(0 0 14px rgba(123, 176, 255, 0.45));
 }
 
-.moon-parent-image {
-  filter: drop-shadow(0 0 18px rgb(115 160 255 / 18%));
+.moon-system-centre-image {
+  filter: drop-shadow(0 0 12px rgba(123, 176, 255, 0.24));
+  pointer-events: none;
 }
 
-.moon-parent-fallback {
-  fill: #f2c66d;
-  filter: drop-shadow(0 0 20px rgb(242 198 109 / 24%));
+.moon-orbit {
+  fill: none;
+  stroke: rgba(155, 183, 222, 0.35);
+  stroke-width: 0.9;
+  stroke-dasharray: 3 5;
 }
 
-.moon-orbit-dot {
-  fill: #dbe8ff;
-  stroke: #07101e;
-  stroke-width: 1.5;
-  transition: r 140ms ease, fill 140ms ease;
+.moon-orbit.is-placeholder {
+  opacity: 0;
 }
 
-.moon-orbit-diagram a:hover .moon-orbit-dot,
-.moon-orbit-diagram a:focus-visible .moon-orbit-dot {
-  r: 5.5;
-  fill: #ffd77c;
+.moon-orbit.is-loaded {
+  opacity: 1;
+  transition: opacity 300ms ease-out;
 }
 
-.moon-orbit-diagram a:focus-visible {
+.moon-orbit.is-unavailable {
+  opacity: 0.12;
+}
+
+.moon-marker {
+  fill: #e8f1ff;
+  stroke: #0b1426;
+  stroke-width: 1.1;
+  opacity: 0.42;
+  transition: cx 250ms ease-out, cy 250ms ease-out, opacity 220ms ease-out;
   outline: none;
 }
 
-.moon-orbit-caption {
-  max-width: 32rem;
-  margin: 0;
-  color: #9caac4;
-  font-size: 0.8rem;
-  line-height: 1.5;
-  text-align: center;
+.moon-marker.is-loaded {
+  fill: #b7d9ff;
+  opacity: 1;
+  filter: drop-shadow(0 0 3px rgba(151, 198, 255, 0.65));
 }
 
-@media (max-width: 900px) {
-  .moon-orbit-diagram {
-    width: min(100%, 680px);
-  }
+.moon-marker.is-fallback {
+  opacity: 0.4;
+}
+
+.moon-marker:focus-visible {
+  stroke: #ffffff;
+  stroke-width: 2.5;
+}
+
+.moon-system-footer {
+  display: grid;
+  gap: 0.65rem;
+  padding-inline: clamp(0rem, 2vw, 1.5rem);
+}
+
+.moon-system-note,
+.moon-system-status {
+  margin: 0;
+  color: #94a6c2;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.moon-system-more {
+  justify-self: start;
+  border: 1px solid rgba(158, 190, 235, 0.3);
+  border-radius: 999px;
+  padding: 0.65rem 1rem;
+  color: #e5efff;
+  background: rgba(41, 63, 98, 0.48);
+  font: inherit;
+  font-size: 0.88rem;
+  cursor: pointer;
+  transition: background 180ms ease, border-color 180ms ease, transform 180ms ease;
+}
+
+.moon-system-more:hover:not(:disabled) {
+  border-color: rgba(190, 216, 255, 0.7);
+  background: rgba(58, 84, 126, 0.7);
+  transform: translateY(-1px);
+}
+
+.moon-system-more:disabled {
+  cursor: progress;
+  opacity: 0.7;
+}
+
+.moon-system-more[hidden] {
+  display: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .moon-orbit-dot {
+  .moon-orbit,
+  .moon-marker,
+  .moon-system-more {
     transition: none;
   }
 }

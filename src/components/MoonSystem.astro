@@ -10,95 +10,74 @@ interface Props {
 }
 
 const { bodyId, bodyName, moons, centreImage } = Astro.props;
-const centre = 360;
-const innerOrbitRadius = 86;
-const outerOrbitRadius = 316;
-const goldenAngle = 2.399963229728653;
-
-const moonOrbits = moons.map((moon, index) => {
-  const fraction = moons.length === 1
-    ? 0.42
-    : (index + 1) / (moons.length + 1);
-  const radius = innerOrbitRadius + fraction * (outerOrbitRadius - innerOrbitRadius);
-  const angle = index * goldenAngle;
-
-  return {
-    ...moon,
-    radius,
-    x: centre + Math.cos(angle) * radius,
-    y: centre + Math.sin(angle) * radius,
-  };
-});
-
-const orbitOpacity = moons.length > 80 ? 0.055 : moons.length > 30 ? 0.09 : 0.17;
-const moonRadius = moons.length > 100 ? 2.1 : moons.length > 40 ? 2.7 : 3.6;
+const initialOrbitCount = 12;
 ---
 
-<div class="moon-orbit-visual">
+<div
+  class="moon-system"
+  data-moon-system
+  data-parent-id={bodyId}
+  data-parent-name={bodyName}
+  data-moons={JSON.stringify(moons)}
+  data-initial-orbit-count={initialOrbitCount}
+>
   <svg
-    class="moon-orbit-diagram"
-    viewBox="0 0 720 720"
+    class="moon-system-svg"
+    viewBox="0 0 420 420"
     role="img"
-    aria-label={`Schematic moon orbit diagram for ${bodyName}`}
+    aria-label={`Schematic orbital view of ${bodyName} and its moons`}
   >
-    <title>Moons of {bodyName} — schematic orbits, not to scale</title>
     <defs>
-      <radialGradient id={`body-glow-${bodyId}`}>
-        <stop offset="0%" stop-color="#91baff" stop-opacity="0.18" />
-        <stop offset="100%" stop-color="#91baff" stop-opacity="0" />
+      <radialGradient id="moon-system-glow">
+        <stop offset="0%" stop-color="#9ac7ff" stop-opacity="0.2" />
+        <stop offset="100%" stop-color="#9ac7ff" stop-opacity="0" />
       </radialGradient>
     </defs>
 
-    <circle class="moon-orbit-glow" cx={centre} cy={centre} r="166" fill={`url(#body-glow-${bodyId})`} />
+    <circle class="moon-system-glow" cx="210" cy="210" r="92" fill="url(#moon-system-glow)" />
+    <g class="moon-orbits" data-moon-orbits aria-hidden="true"></g>
 
-    {moonOrbits.map((moon) => (
-      <circle
-        class="moon-orbit-ring"
-        cx={centre}
-        cy={centre}
-        r={moon.radius}
-        style={`--orbit-opacity: ${orbitOpacity};`}
-      />
-    ))}
-
-    <circle class="moon-parent-halo" cx={centre} cy={centre} r="66" />
-
-    {moonOrbits.map((moon) => (
-      <a href={`/bodies/${moon.id}/`} aria-label={`View ${moon.name}`}>
-        <title>{moon.name}</title>
-        <circle
-          class="moon-orbit-dot"
-          cx={moon.x}
-          cy={moon.y}
-          r={moonRadius}
-        />
-      </a>
-    ))}
-
-    {centreImage ? (
+    <circle
+      class="moon-system-centre-fallback"
+      cx="210"
+      cy="210"
+      r="18"
+      style={!centreImage ? `view-transition-name: body-${bodyId};` : undefined}
+    />
+    {centreImage && (
       <image
-        class="moon-parent-image"
+        class="moon-system-centre-image"
         href={centreImage}
-        x="300"
-        y="300"
-        width="120"
-        height="120"
+        x="182"
+        y="182"
+        width="56"
+        height="56"
         preserveAspectRatio="xMidYMid meet"
-        transition:name={`body-${bodyId}`}
+        style={`view-transition-name: body-${bodyId};`}
       />
-    ) : (
-      <circle class="moon-parent-fallback" cx={centre} cy={centre} r="28" />
     )}
+
+    <g class="moon-markers" data-moon-markers></g>
   </svg>
 
-  {moons.length > 0 ? (
-    <p class="moon-orbit-caption">
-      {moons.length.toLocaleString()} known moon{moons.length === 1 ? "" : "s"} shown.
-      Orbit spacing and moon positions are illustrative, not measured.
+  <div class="moon-system-footer">
+    <p class="moon-system-note">
+      Orbital shapes and current positions use available NASA/JPL elements. The scale is normalised to fit this panel.
     </p>
-  ) : (
-    <p class="moon-orbit-caption">
-      No moons are currently listed for {bodyName}. The central body is shown on its own.
+    <p class="moon-system-status" data-moon-system-status aria-live="polite">
+      {moons.length === 0 ? "No moon references are available for this body." : "Preparing moon orbits…"}
     </p>
-  )}
+    <button
+      class="moon-system-more"
+      type="button"
+      data-moon-system-more
+      hidden={moons.length <= initialOrbitCount}
+    >
+      Load more moon orbits
+    </button>
+  </div>
 </div>
+
+<script>
+  import "../scripts/moon-system";
+</script>
