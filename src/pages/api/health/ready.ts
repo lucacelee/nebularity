@@ -2,7 +2,7 @@ import type { APIRoute } from "astro";
 import { Readiness } from "../../../lib/signal-ready";
 
 export const GET: APIRoute = async () => {
-    let up: boolean = Readiness.isReady();
+    const up: boolean = Readiness.isReady();
     if (!up) {
         return new Response(JSON.stringify({
             status: 'starting'
