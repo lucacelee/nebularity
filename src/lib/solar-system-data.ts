@@ -97,13 +97,12 @@ function getApiKey(): string {
   return key.trim();
 }
 
-/** Fetch one body's data on the server and cache it using the shared TTL. */
+/** Fetch one body's record and cache it using the shared stale-while-revalidate TTL. */
 export async function getSolarBody(
   bodyId: string,
 ): Promise<CachedResult<SolarBody>> {
   const id = bodyId.trim().toLowerCase();
 
-  // IDs are API identifiers, not arbitrary URLs or paths.
   if (!/^[a-z0-9-]+$/.test(id)) {
     throw new Error("Invalid solar-system body ID.");
   }
@@ -157,11 +156,7 @@ function slugifyBodyName(name: string): string {
     .replace(/^-|-$/g, "");
 }
 
-/**
- * Resolve an API relation to a body ID. API relation/name fields are not
- * guaranteed to be present on every record, so both arguments are optional
- * at runtime even though the API normally supplies them.
- */
+/** Resolve an API relation to a body ID, tolerating incomplete records. */
 export function getBodyIdFromRelation(
   relation: unknown,
   fallbackName?: unknown,
@@ -188,10 +183,7 @@ export function getBodyIdFromRelation(
   return id || undefined;
 }
 
-/**
- * Turn untrusted API moon entries into safe, linkable references.
- * Malformed entries are skipped instead of breaking the whole page.
- */
+/** Turn untrusted API moon entries into safe, linkable references. */
 export function resolveMoonReferences(
   input: unknown,
 ): ResolvedMoonReference[] {
@@ -216,6 +208,127 @@ export function resolveMoonReferences(
   }
 
   return resolved.sort((left, right) =>
+    left.name.localeCompare(right.name, undefined, { sensitivity: "base" }),
+  );
+}
+
+/**
+ * Cached secondary source for moon membership. If the individual body record
+ * omits its `moons` property, query the API's Moon records and inspect each
+ * `aroundPlanet` relation instead of incorrectly reporting zero moons.
+ */
+export async function getSolarSystemMoonCatalogue(): Promise<CachedResult<SolarBody[]>> {
+  const catalogueFields = [
+    "id",
+    "name",
+    "englishName",
+    "bodyType",
+    "aroundPlanet",
+    "mass",
+    "meanRadius",
+    "semimajorAxis",
+    "eccentricity",
+    "inclination",
+  ].join(",");
+
+  const pageSize = 100;
+  const maximumPages = 15;
+
+  return getStaleWhileRevalidate<SolarBody[]>(
+    "le-systeme-solaire:moon-catalogue:v2",
+    async () => {
+      const allRecords: SolarBody[] = [];
+
+      for (let pageNumber = 1; pageNumber <= maximumPages; pageNumber++) {
+        const url = new URL(`${API_ROOT}/bodies/`);
+        url.searchParams.set("data", catalogueFields);
+        url.searchParams.set("order", "id,asc");
+        url.searchParams.set("page", `${pageNumber},${pageSize}`);
+        url.searchParams.append("filter[]", "bodyType,eq,Moon");
+
+        const response = await fetch(url, {
+          headers: {
+            Authorization: `Bearer ${getApiKey()}`,
+            Accept: "application/json",
+          },
+          signal: AbortSignal.timeout(15_000),
+        });
+
+        const payload: unknown = await response.json().catch(() => null);
+
+        if (!response.ok) {
+          const message =
+            typeof payload === "object" && payload !== null && "message" in payload
+              ? String((payload as { message: unknown }).message)
+              : `The Solar System OpenData catalogue returned HTTP ${response.status}.`;
+          throw new Error(message);
+        }
+
+        if (
+          typeof payload !== "object" ||
+          payload === null ||
+          !("bodies" in payload) ||
+          !Array.isArray((payload as { bodies: unknown }).bodies)
+        ) {
+          throw new Error("The Solar System OpenData catalogue response was not a body list.");
+        }
+
+        const pageRecords = (payload as { bodies: unknown[] }).bodies.filter(
+          (item): item is SolarBody =>
+            typeof item === "object" &&
+            item !== null &&
+            "id" in item &&
+            typeof (item as { id: unknown }).id === "string",
+        );
+
+        allRecords.push(...pageRecords);
+
+        if (pageRecords.length < pageSize) {
+          break;
+        }
+      }
+
+      const recordsById = new Map<string, SolarBody>();
+      for (const record of allRecords) {
+        recordsById.set(record.id.toLowerCase(), record);
+      }
+
+      const records = [...recordsById.values()];
+      if (records.length === 0) {
+        throw new Error("The Solar System OpenData catalogue returned no usable moon records.");
+      }
+
+      return records;
+    },
+  );
+}
+
+export async function getMoonsFromSolarSystemCatalogue(
+  parent: SolarBody,
+): Promise<ResolvedMoonReference[]> {
+  const cached = await getSolarSystemMoonCatalogue();
+  const references: ResolvedMoonReference[] = [];
+  const seen = new Set<string>();
+
+  for (const record of cached.value) {
+    if (!record.aroundPlanet) continue;
+
+    const parentId = getBodyIdFromRelation(
+      record.aroundPlanet.rel,
+      record.aroundPlanet.planet,
+    );
+
+    if (parentId !== parent.id.toLowerCase()) continue;
+
+    const id = record.id.toLowerCase();
+    if (!id || seen.has(id)) continue;
+
+    const name = record.englishName?.trim() || record.name?.trim() || id;
+    references.push({ id, name });
+    seen.add(id);
+  }
+
+  return references.sort((left, right) =>
     left.name.localeCompare(right.name, undefined, { sensitivity: "base" }),
   );
 }

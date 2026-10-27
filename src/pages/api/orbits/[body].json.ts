@@ -1,269 +1,89 @@
 import type { APIRoute } from "astro";
-import { getStaleWhileRevalidate } from "../../../lib/stale-cache";
+import { getJplOrbit } from "../../../lib/nasa-jpl";
 
-const BODY_IDS: Record<string, string> = {
-    mercury: "199",
-    venus: "299",
-    earth: "399",
-    mars: "499",
-    jupiter: "599",
-    saturn: "699",
-    uranus: "799",
-    neptune: "899",
-};
-
-const DAY_MS = 86_400_000;
-const TDB_MINUS_UTC_MS = 69_184; // Current-era approximation
-
-function horizonsDate(date: Date): string {
-    return date.toISOString().replace("T", " ").slice(0, 19);
+function validSlug(value: string | null): value is string {
+  return typeof value === "string" && /^[a-z0-9-]+$/i.test(value);
 }
 
-async function fetchFreshOrbit(
-    name: string,
-    id: string,
-): Promise<Response> {
-    const epochUtc = new Date();
-    const startTdb = new Date(epochUtc.getTime() + TDB_MINUS_UTC_MS);
-    const stopTdb = new Date(startTdb.getTime() + DAY_MS);
+function cleanDisplayName(value: string | null, fallback: string): string {
+  if (!value) return fallback;
 
-    const query = new URLSearchParams({
-        format: "json",
-        COMMAND: `'${id}'`,
-        OBJ_DATA: "NO",
-        MAKE_EPHEM: "YES",
-        EPHEM_TYPE: "ELEMENTS",
-        CENTER: "'500@10'",
-        REF_PLANE: "ECLIPTIC",
-        REF_SYSTEM: "ICRF",
-        OUT_UNITS: "AU-D",
-        TIME_TYPE: "TDB",
-        START_TIME: `'${horizonsDate(startTdb)}'`,
-        STOP_TIME: `'${horizonsDate(stopTdb)}'`,
-        STEP_SIZE: "'1 d'",
-        CSV_FORMAT: "YES",
-        ELM_LABELS: "NO",
-    });
+  const cleaned = value.trim().replace(/\s+/g, " ");
+  if (cleaned.length === 0 || cleaned.length > 100) return fallback;
+  if (!/^[\p{L}\p{N} ._'’()/-]+$/u.test(cleaned)) return fallback;
 
-    const url = `https://ssd.jpl.nasa.gov/api/horizons.api?${query}`;
+  return cleaned;
+}
 
-    let result: { result?: string; error?: string } | undefined;
-
-    for (let attempt = 1; attempt <= 3; attempt++) {
-        try {
-            const response = await fetch(url, {
-                signal: AbortSignal.timeout(10_000),
-            });
-
-            if (!response.ok) {
-                throw new Error(`Horizons HTTP ${response.status}`);
-            }
-
-            const payload = await response.json() as {
-                result?: string;
-                error?: string;
-            };
-
-            if (payload.error || !payload.result) {
-                throw new Error(
-                    payload.error ?? "Horizons returned no result"
-                );
-            }
-
-            result = payload;
-            break;
-        } catch (error) {
-            console.error(
-                `[Horizons: ${name}] Attempt ${attempt}/3 failed:`,
-                error
-            );
-
-            if (attempt < 3) {
-                await new Promise(resolve =>
-                    setTimeout(resolve, attempt * 1000)
-                );
-            }
-        }
-    }
-
-    if (!result?.result) {
-        return Response.json(
-            { error: "Horizons unavailable after three attempts" },
-            { status: 502 }
-        );
-    }
-
-    if (result.error || !result.result) {
-        console.error(`[Horizons: ${name}] API error`, {
-            error: result.error,
-            resultPreview: result.result?.slice(0, 1500),
-        });
-
-        return Response.json(
-            { error: result.error ?? "Missing Horizons data" },
-            { status: 502 }
-        );
-    }
-
-    const section = result.result.split("$$SOE")[1]?.split("$$EOE")[0];
-
-    const row = section?.split(/\r?\n/).map(line => line.trim()).find(line => {
-        const fields = line.split(",");
-        return fields.length >= 14 && Number.isFinite(Number(fields[0]));
-    });
-
-    if (!row) {
-        console.error(`[Horizons: ${name}] No CSV row found`, {
-            hasSection: Boolean(section),
-            resultPreview: result.result?.slice(0, 2500),
-        });
-
-        return Response.json(
-            { error: "Could not parse orbital elements" },
-            { status: 502 }
-        );
-    }
-
-    const fields = row.split(",").map(value => value.trim());
-
-    const numberAt = (index: number) => Number(fields[index]);
-
-    const elements = {
-        epochJD: numberAt(0),
-        eccentricity: numberAt(2),
-        inclinationDeg: numberAt(4),
-        ascendingNodeDeg: numberAt(5),
-        argumentPeriapsisDeg: numberAt(6),
-        meanAnomalyDeg: numberAt(9),
-        semiMajorAxisAU: numberAt(11),
-        periodDays: numberAt(13),
-    };
-
-    console.error(`[Horizons: ${name}]`, {
-        rawRow: row,
-        fields,
-        elements,
-        checks: {
-            finite: Object.fromEntries(
-                Object.entries(elements).map(([key, value]) => [
-                    key,
-                    Number.isFinite(value),
-                ])
-            ),
-            eccentricityValid:
-                elements.eccentricity >= 0 &&
-                elements.eccentricity < 1,
-            semiMajorAxisValid: elements.semiMajorAxisAU > 0,
-            periodValid: elements.periodDays > 0,
-        },
-    });
-
-    const numericValues = Object.values(elements);
-
-    if (
-        fields.length < 14 ||
-        !numericValues.every(Number.isFinite) ||
-        elements.eccentricity < 0 ||
-        elements.eccentricity >= 1 ||
-        elements.semiMajorAxisAU <= 0 ||
-        elements.periodDays <= 0
-    ) {
-        console.error("Invalid orbital elements", { fields, elements });
-
-        console.error(`[Horizons: ${name}]`, {
-            rawRow: row,
-            fields,
-            elements,
-            checks: {
-                finite: Object.fromEntries(
-                    Object.entries(elements).map(([key, value]) => [
-                        key,
-                        Number.isFinite(value),
-                    ])
-                ),
-                eccentricityValid:
-                    elements.eccentricity >= 0 &&
-                    elements.eccentricity < 1,
-                semiMajorAxisValid: elements.semiMajorAxisAU > 0,
-                periodValid: elements.periodDays > 0,
-            },
-        });
-
-        return Response.json(
-            { error: "Invalid orbital elements" },
-            { status: 502 }
-        );
-    }
-
-    return Response.json({
-        name,
-        epochUtc: epochUtc.toISOString(),
-        elements,
-    });
+const DEFAULT_NAMES: Record<string, string> = {
+  sun: "Sun",
+  mercury: "Mercury",
+  venus: "Venus",
+  earth: "Earth",
+  mars: "Mars",
+  jupiter: "Jupiter",
+  saturn: "Saturn",
+  uranus: "Uranus",
+  neptune: "Neptune",
+  pluto: "Pluto",
+  moon: "Moon",
+  phobos: "Phobos",
+  deimos: "Deimos",
+  io: "Io",
+  europa: "Europa",
+  ganymede: "Ganymede",
+  callisto: "Callisto",
 };
 
-export const GET: APIRoute = async ({ params }) => {
-    const name = params.body?.toLowerCase();
-    const id = name ? BODY_IDS[name] : undefined;
+export const GET: APIRoute = async ({ params, request }) => {
+  const bodyId = params.body?.toLowerCase();
 
-    if (!name || !id) {
-        return Response.json(
-            { error: "Unknown planet" },
-            { status: 404 },
-        );
-    }
+  if (!bodyId || !validSlug(bodyId)) {
+    return Response.json({ error: "Invalid solar-system body ID." }, { status: 400 });
+  }
 
-    try {
-        // Include the target and reference centre in the key.
-        // A moon orbiting a planet will need a different key.
-        const cacheKey = `horizons:elements:${id}:center=500@10`;
+  const url = new URL(request.url);
+  const rawCentreId = url.searchParams.get("center");
 
-        const cached = await getStaleWhileRevalidate(
-            cacheKey,
-            async () => {
-                const response = await fetchFreshOrbit(name, id);
+  if (rawCentreId !== null && !validSlug(rawCentreId)) {
+    return Response.json({ error: "Invalid orbital centre ID." }, { status: 400 });
+  }
 
-                // Never cache error responses.
-                if (!response.ok) {
-                    const payload = await response
-                        .clone()
-                        .json()
-                        .catch(() => null) as { error?: string } | null;
+  const centreId = rawCentreId?.toLowerCase();
+  const bodyName = cleanDisplayName(
+    url.searchParams.get("name"),
+    DEFAULT_NAMES[bodyId] ?? bodyId.replace(/-/g, " "),
+  );
+  const centreName = centreId
+    ? cleanDisplayName(
+        url.searchParams.get("centerName"),
+        DEFAULT_NAMES[centreId] ?? centreId.replace(/-/g, " "),
+      )
+    : undefined;
 
-                    throw new Error(
-                        payload?.error ??
-                        `Horizons returned HTTP ${response.status}`,
-                    );
-                }
+  try {
+    const cached = await getJplOrbit(bodyId, bodyName, centreId, centreName);
 
-                return await response.json() as unknown;
-            },
-        );
+    return Response.json(cached.value, {
+      headers: {
+        // The server cache is authoritative; don't let the browser keep a
+        // separate copy that can outlive the configured server-side TTL.
+        "Cache-Control": "no-store",
+        "X-Orbit-Cache": cached.status,
+        "X-Orbit-Data-Fetched-At": new Date(cached.fetchedAt).toISOString(),
+        "X-Orbit-Cache-Expires-At": new Date(cached.expiresAt).toISOString(),
+      },
+    });
+  } catch (error: unknown) {
+    console.error(`[Orbit API: ${bodyId}]`, error);
 
-        return Response.json(cached.value, {
-            headers: {
-                // Keep the browser from maintaining its own
-                // competing cache. Our server controls freshness.
-                "Cache-Control": "no-store",
-
-                // Useful for debugging the cache behaviour.
-                "X-Orbit-Cache": cached.status,
-                "X-Orbit-Data-Fetched-At":
-                    new Date(cached.fetchedAt).toISOString(),
-                "X-Orbit-Cache-Expires-At":
-                    new Date(cached.expiresAt).toISOString(),
-            },
-        });
-    } catch (error: unknown) {
-        console.error(`[Orbit cache: ${name}]`, error);
-
-        return Response.json(
-            {
-                error: error instanceof Error
-                    ? error.message
-                    : "Could not load orbital data",
-            },
-            { status: 502 },
-        );
-    }
+    return Response.json(
+      {
+        error: error instanceof Error
+          ? error.message
+          : "Could not load orbital data from NASA/JPL.",
+      },
+      { status: 502 },
+    );
+  }
 };

@@ -26,6 +26,12 @@ export interface OrbitData {
 }
 
 const TAU = 2 * Math.PI;
+const DAY_MS = 86_400_000;
+const JULIAN_UNIX_EPOCH = 2_440_587.5;
+
+// Current-era TDB-UTC difference. Horizons elements are returned in TDB,
+// while browser Dates use UTC. The residual is tiny for this visualisation.
+const TDB_MINUS_UTC_MS = 69_184;
 
 const radians = (degrees: number) => degrees * Math.PI / 180;
 
@@ -46,23 +52,20 @@ export function createEllipse(el: OrbitalElements): Ellipse {
   const cosW = Math.cos(w);
   const sinW = Math.sin(w);
   const cosI = Math.cos(i);
-  const sinI = Math.sin(i);
 
-  // Periapsis direction and perpendicular direction
-  // in the ecliptic coordinate frame.
+  // Periapsis and perpendicular directions in the ecliptic coordinate frame.
   const px = cosO * cosW - sinO * sinW * cosI;
   const py = sinO * cosW + cosO * sinW * cosI;
 
   const qx = -cosO * sinW - sinO * cosW * cosI;
   const qy = -sinO * sinW + cosO * cosW * cosI;
 
-  // Project the ellipse's two axis vectors into 2D.
+  // Project the ellipse's axis vectors into two dimensions.
   const ux = a * px;
   const uy = a * py;
   const vx = b * qx;
   const vy = b * qy;
 
-  // The projected ellipse's axis lengths and rotation.
   const xx = ux * ux + vx * vx;
   const xy = ux * uy + vx * vy;
   const yy = uy * uy + vy * vy;
@@ -73,13 +76,13 @@ export function createEllipse(el: OrbitalElements): Ellipse {
   const projectedB = Math.sqrt(Math.max(0, (xx + yy - root) / 2));
   const j = Math.atan2(2 * xy, xx - yy) / 2;
 
-  // Align the ellipse's parameter with eccentric anomaly.
+  // Align the ellipse parameter with eccentric anomaly.
   const rotatedUx = Math.cos(j) * ux + Math.sin(j) * uy;
   const rotatedUy = -Math.sin(j) * ux + Math.cos(j) * uy;
 
   const phaseOffset = Math.atan2(
     rotatedUy / Math.max(projectedB, 1e-12),
-    rotatedUx / projectedA
+    rotatedUx / projectedA,
   );
 
   const determinant = ux * vy - uy * vx;
@@ -95,7 +98,18 @@ export function createEllipse(el: OrbitalElements): Ellipse {
   };
 }
 
-/** Your original Desmos formula, unchanged in structure. */
+/** Scale an ellipse to a display coordinate system without changing its phase. */
+export function scaleEllipse(ellipse: Ellipse, scale: number): Ellipse {
+  return {
+    ...ellipse,
+    a: ellipse.a * scale,
+    b: ellipse.b * scale,
+    cx: ellipse.cx * scale,
+    cy: ellipse.cy * scale,
+  };
+}
+
+/** Desmos-style rotated ellipse parameterisation used by the SVG renderer. */
 export function getOrbitPoint(ellipse: Ellipse, t: number) {
   const angle = TAU * t;
 
@@ -129,26 +143,42 @@ function solveKepler(meanAnomaly: number, e: number): number {
   return E;
 }
 
-/** Convert a date into the formula's normalized parameter t. */
+function getElapsedDays(data: OrbitData, date: Date): number {
+  const epochJD = data.elements.epochJD;
+
+  if (Number.isFinite(epochJD)) {
+    const currentTdbJD =
+      date.getTime() / DAY_MS
+      + JULIAN_UNIX_EPOCH
+      + TDB_MINUS_UTC_MS / DAY_MS;
+
+    return currentTdbJD - epochJD;
+  }
+
+  // Legacy compatibility for cached entries made before epochJD was used.
+  return (date.getTime() - Date.parse(data.epochUtc)) / DAY_MS;
+}
+
+/**
+ * Project the cached osculating elements forward or backward to the requested
+ * time. This uses the elements' own Julian-date epoch rather than assuming
+ * that cache-fetch time and element epoch are the same instant.
+ */
 export function getProgressAtDate(
   data: OrbitData,
   ellipse: Ellipse,
-  date: Date
+  date: Date,
 ): number {
-  const { elements: el } = data;
+  const { elements } = data;
+  const elapsedDays = getElapsedDays(data, date);
 
-  const elapsedDays =
-    (date.getTime() - Date.parse(data.epochUtc)) / 86_400_000;
+  // Mean anomaly advances uniformly with time. Negative elapsed time naturally
+  // moves the body backward along its orbit.
+  const meanAnomaly = radians(elements.meanAnomalyDeg)
+    + TAU * elapsedDays / elements.periodDays;
 
-  // Mean anomaly advances uniformly with time.
-  const M = radians(el.meanAnomalyDeg)
-    + TAU * elapsedDays / el.periodDays;
-
-  // Eccentric anomaly gives the correct position along the ellipse.
-  const E = solveKepler(M, el.eccentricity);
-
-  // Convert to the parameter used by your original formula.
-  const angle = ellipse.phaseOffset + ellipse.phaseDirection * E;
+  const eccentricAnomaly = solveKepler(meanAnomaly, elements.eccentricity);
+  const angle = ellipse.phaseOffset + ellipse.phaseDirection * eccentricAnomaly;
 
   return wrapAngle(angle) / TAU;
 }
