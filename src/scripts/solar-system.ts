@@ -5,17 +5,9 @@ import {
   type OrbitData,
   type Ellipse,
 } from "../lib/orbit";
+import { SOLAR_SYSTEM_BODY_IDS } from "../lib/solar-system-bodies";
 
-const BODIES = [
-  "mercury",
-  "venus",
-  "earth",
-  "mars",
-  "jupiter",
-  "saturn",
-  "uranus",
-  "neptune",
-];
+const BODIES: readonly string[] = SOLAR_SYSTEM_BODY_IDS;
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 const CENTER = 500;

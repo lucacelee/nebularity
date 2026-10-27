@@ -131,3 +131,29 @@
   stroke: #ffffff;
   stroke-width: 2.5;
 }
+
+.moon-marker-link {
+  cursor: pointer;
+}
+
+.moon-marker-image {
+  opacity: 0.95;
+  filter: drop-shadow(0 0 3px rgba(151, 198, 255, 0.55));
+  transition: opacity 220ms ease-out, filter 220ms ease-out;
+}
+
+.moon-marker-image.is-loaded {
+  opacity: 1;
+  filter: drop-shadow(0 0 5px rgba(151, 198, 255, 0.72));
+}
+
+.moon-marker-image.is-fallback {
+  opacity: 0.4;
+  filter: grayscale(0.35);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .moon-marker-image {
+    transition: none;
+  }
+}

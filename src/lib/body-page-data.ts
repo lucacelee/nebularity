@@ -7,6 +7,7 @@ import {
   type ResolvedMoonReference,
   type BodyMass,
 } from "./solar-system-data";
+import { findAvailableMoonImages } from "./moon-assets-server";
 import {
   findFallbackMoonById,
   getJplMass,
@@ -33,6 +34,7 @@ export interface BodyPageData {
   dataNotice?: string;
   centreImage?: string;
   moonReferences: ResolvedMoonReference[];
+  moonImagePaths: Record<string, string>;
   parentId?: string;
   parentName?: string;
   mainStats: BodyPageStat[];
@@ -285,8 +287,24 @@ export async function loadBodyPage(
   }
 
   const pageName = body?.englishName || body?.name || DISPLAY_NAMES[bodyId] || bodyId || "Solar System Body";
-  const centreImage = LOCAL_IMAGE_BY_BODY_ID[bodyId];
-  let moonReferences = await findMoonReferences(bodyId, body);
+  const knownCentreImage = LOCAL_IMAGE_BY_BODY_ID[bodyId];
+  const moonReferences = await findMoonReferences(bodyId, body);
+
+  // Only include images that actually exist. This prevents the browser from
+  // requesting a missing PNG for every moon and filling the dev log with 404s.
+  const imageBodyIds = moonReferences.map((moon) => moon.id);
+  if (!knownCentreImage && body?.aroundPlanet) {
+    imageBodyIds.push(bodyId);
+  }
+
+  let moonImagePaths: Record<string, string> = {};
+  try {
+    moonImagePaths = await findAvailableMoonImages(imageBodyIds);
+  } catch (error) {
+    console.warn(`[Body page: ${bodyId}] Could not inspect local moon images`, error);
+  }
+
+  const centreImage = knownCentreImage ?? moonImagePaths[bodyId];
 
   // A missing optional field is not evidence that a body has no mass.
   // Ask the NASA/JPL object-data endpoint before showing it as unavailable.
@@ -342,6 +360,7 @@ export async function loadBodyPage(
     dataNotice,
     centreImage,
     moonReferences,
+    moonImagePaths,
     parentId,
     parentName,
     mainStats,

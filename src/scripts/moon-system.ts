@@ -1,4 +1,10 @@
 import {
+  parseMoonImageManifest,
+  parseMoonReferences,
+  getMoonTooltipLabel,
+  type MoonMarkerReference,
+} from "../lib/moon-rendering";
+import {
   createEllipse,
   getOrbitPoint,
   getProgressAtDate,
@@ -7,17 +13,12 @@ import {
   type OrbitData,
 } from "../lib/orbit";
 
-interface MoonReference {
-  id: string;
-  name: string;
-}
-
 interface MoonOrbitView {
-  moon: MoonReference;
+  moon: MoonMarkerReference;
   data?: OrbitData;
   ellipse?: Ellipse;
   path: SVGPathElement;
-  marker: SVGCircleElement;
+  marker: SVGCircleElement | SVGImageElement;
 }
 
 const SVG_NS = "http://www.w3.org/2000/svg";
@@ -30,22 +31,53 @@ function makeSvg<K extends keyof SVGElementTagNameMap>(tag: K): SVGElementTagNam
   return document.createElementNS(SVG_NS, tag);
 }
 
-function parseMoonReferences(value: string | undefined): MoonReference[] {
-  if (!value) return [];
-
-  try {
-    const parsed: unknown = JSON.parse(value);
-    if (!Array.isArray(parsed)) return [];
-
-    return parsed.filter((item): item is MoonReference => {
-      if (typeof item !== "object" || item === null) return false;
-
-      const moon = item as Partial<MoonReference>;
-      return typeof moon.id === "string" && typeof moon.name === "string";
-    });
-  } catch {
-    return [];
+function createMoonMarker(
+  moon: MoonMarkerReference,
+  imagePath: string | undefined,
+): SVGCircleElement | SVGImageElement {
+  if (imagePath) {
+    const image = makeSvg("image");
+    const size = 13;
+    image.classList.add("moon-marker", "moon-marker-image");
+    image.setAttribute("href", imagePath);
+    image.setAttribute("width", String(size));
+    image.setAttribute("height", String(size));
+    image.setAttribute("x", String(SVG_CENTRE - size / 2));
+    image.setAttribute("y", String(SVG_CENTRE - size / 2));
+    image.setAttribute("preserveAspectRatio", "xMidYMid meet");
+    image.setAttribute("aria-hidden", "true");
+    image.setAttribute("data-body-transition-source", "");
+    image.style.cursor = "pointer";
+    image.style.setProperty("view-transition-name", `body-${moon.id}`);
+    return image;
   }
+
+  const marker = makeSvg("circle");
+  marker.classList.add("moon-marker");
+  marker.setAttribute("r", "3.4");
+  marker.setAttribute("cx", String(SVG_CENTRE));
+  marker.setAttribute("cy", String(SVG_CENTRE));
+  marker.setAttribute("aria-hidden", "true");
+  marker.setAttribute("data-body-transition-source", "");
+  marker.style.cursor = "pointer";
+  marker.style.setProperty("view-transition-name", `body-${moon.id}`);
+  return marker;
+}
+
+function positionMoonMarker(
+  marker: SVGCircleElement | SVGImageElement,
+  x: number,
+  y: number,
+): void {
+  if (marker.localName === "circle") {
+    marker.setAttribute("cx", String(x));
+    marker.setAttribute("cy", String(y));
+    return;
+  }
+
+  const size = Number(marker.getAttribute("width") ?? 13);
+  marker.setAttribute("x", String(x - size / 2));
+  marker.setAttribute("y", String(y - size / 2));
 }
 
 function normalisedEllipse(ellipse: Ellipse, scale: number): Ellipse {
@@ -99,8 +131,11 @@ function updateDiagram(views: MoonOrbitView[]): void {
     const progress = getProgressAtDate(view.data, view.ellipse, now);
     const point = getOrbitPoint(displayEllipse, progress);
 
-    view.marker.setAttribute("cx", String(SVG_CENTRE + point.x));
-    view.marker.setAttribute("cy", String(SVG_CENTRE - point.y));
+    positionMoonMarker(
+      view.marker,
+      SVG_CENTRE + point.x,
+      SVG_CENTRE - point.y,
+    );
     view.marker.classList.add("is-loaded");
   }
 }
@@ -133,8 +168,49 @@ function initialiseMoonSystem(root: HTMLElement): void {
   const parentId = root.dataset.parentId ?? "";
   const parentName = root.dataset.parentName ?? parentId;
   const moons = parseMoonReferences(root.dataset.moons);
+  const moonImages = parseMoonImageManifest(root.dataset.moonImages);
   const initialCount = Number(root.dataset.initialOrbitCount ?? MOON_BATCH_SIZE);
   const views: MoonOrbitView[] = [];
+
+  // The image is present in the server-rendered manifest, so this also helps
+  // the browser match the incoming view-transition element without a 404 probe.
+  const centreFallback = svg.querySelector<SVGCircleElement>(".moon-system-centre-fallback");
+  const centreImageExists = svg.querySelector<SVGImageElement>(".moon-system-centre-image");
+  const centreImagePath = moonImages[parentId];
+
+  function prepareCentreImage(image: SVGImageElement): void {
+    if (centreFallback) {
+      centreFallback.style.visibility = "hidden";
+      centreFallback.style.setProperty("view-transition-name", "none");
+    }
+
+    image.addEventListener("error", () => {
+      // If the manifest was stale (for example, a file was deleted after the
+      // HTML was rendered), restore the circle rather than showing a broken image.
+      image.remove();
+      if (!centreFallback) return;
+
+      centreFallback.style.visibility = "visible";
+      centreFallback.style.setProperty("view-transition-name", `body-${parentId}`);
+    }, { once: true });
+  }
+
+  if (centreImageExists) {
+    prepareCentreImage(centreImageExists);
+  } else if (centreImagePath) {
+    const image = makeSvg("image");
+    image.classList.add("moon-system-centre-image");
+    image.setAttribute("href", centreImagePath);
+    image.setAttribute("x", "150");
+    image.setAttribute("y", "150");
+    image.setAttribute("width", "120");
+    image.setAttribute("height", "120");
+    image.setAttribute("preserveAspectRatio", "xMidYMid meet");
+    image.setAttribute("aria-label", parentName);
+    image.style.setProperty("view-transition-name", `body-${parentId}`);
+    svg.appendChild(image);
+    prepareCentreImage(image);
+  }
 
   for (const moon of moons) {
     const path = makeSvg("path");
@@ -146,26 +222,43 @@ function initialiseMoonSystem(root: HTMLElement): void {
     const link = makeSvg("a");
     link.setAttribute("href", `/bodies/${moon.id}/`);
     link.setAttribute("aria-label", `Inspect ${moon.name}`);
+    link.setAttribute("title", moon.name);
     link.setAttribute("data-body-transition-link", moon.id);
     link.setAttribute("data-astro-prefetch", "hover");
     link.classList.add("moon-marker-link");
 
-    const marker = makeSvg("circle");
-    marker.classList.add("moon-marker");
+    // SVG <title> provides the native hover tooltip and an accessible name.
+    const tooltipLabel = getMoonTooltipLabel(moon.name);
+    const title = makeSvg("title");
+    title.textContent = tooltipLabel;
+    link.appendChild(title);
+
+    const marker = createMoonMarker(moon, moonImages[moon.id]);
     marker.dataset.moonId = moon.id;
-    marker.setAttribute("r", "3.4");
-    marker.setAttribute("cx", String(SVG_CENTRE));
-    marker.setAttribute("cy", String(SVG_CENTRE));
-    marker.setAttribute("aria-hidden", "true");
-    marker.setAttribute("data-body-transition-source", "");
-    marker.style.cursor = "pointer";
-    // This name supports navigating back from a moon's own inspection page.
-    // The click handler removes duplicates and keeps only the chosen source.
-    marker.style.setProperty("view-transition-name", `body-${moon.id}`);
+    marker.setAttribute("title", tooltipLabel);
+    link.setAttribute("title", tooltipLabel);
     link.appendChild(marker);
     activeMarkerLayer.appendChild(link);
 
-    views.push({ moon, path, marker });
+    const view: MoonOrbitView = { moon, path, marker };
+    if (marker.localName === "image") {
+      marker.addEventListener("error", () => {
+        // The file may have been removed after SSR built the manifest. Replace
+        // just this image with a circle and keep the orbit/tooltip functional.
+        if (!root.isConnected || view.marker !== marker) return;
+
+        const fallback = createMoonMarker(moon, undefined);
+        fallback.dataset.moonId = moon.id;
+        fallback.setAttribute("title", tooltipLabel);
+        fallback.classList.add("is-fallback");
+        marker.replaceWith(fallback);
+        view.marker = fallback;
+
+        if (view.data && view.ellipse) updateDiagram(views);
+      }, { once: true });
+    }
+
+    views.push(view);
   }
 
   let nextIndex = 0;

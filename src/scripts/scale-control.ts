@@ -1,3 +1,8 @@
+import {
+  getFixedArtworkCounterScale,
+  getSpriteCounterScale,
+} from "../lib/scale-math";
+
 function initialiseScaleControl() {
     const slider = document.querySelector<HTMLInputElement>("#solar-scale");
     const output = document.querySelector<HTMLOutputElement>("#solar-scale-value");
@@ -47,25 +52,29 @@ function initialiseScaleControl() {
     }
 
     function applyMarkerScales(zoom: number) {
-      // The viewBox magnifies everything by `zoom`. Counter-scale the fixed
-      // centre artwork so it stays about the same size on screen.
-      const fixedArtworkScale = 1 / zoom;
+      // The viewBox magnifies everything. Most decoration is counter-scaled
+      // fully so it stays the same size on screen.
+      const fixedArtworkScale = getFixedArtworkCounterScale(zoom);
+
+      // The Sun artwork is a single group in Planets.astro. Scaling the group
+      // once avoids SVG transform interactions between the glow, fallback,
+      // and image. It uses the identical counter-scale as planet sprites.
+      const spriteScale = getSpriteCounterScale(zoom);
 
       for (const child of Array.from(activeSvg.children)) {
         if (child === activeOrbitLayer || child === activePlanetLayer) continue;
         if (!(child instanceof SVGElement)) continue;
         if (["defs", "title", "desc"].includes(child.tagName.toLowerCase())) continue;
 
-        setCounterScale(child, fixedArtworkScale);
+        const isSunArtwork = child.id === "sun-artwork";
+
+        setCounterScale(child, isSunArtwork ? spriteScale : fixedArtworkScale);
       }
 
-      // Planet sprites still get more visible as you zoom, but only by the
-      // square root of the zoom factor (10× zoom -> about 3.2× sprite size).
-      const planetSpriteScale = 1 / Math.sqrt(zoom);
       const images = activePlanetLayer.querySelectorAll<SVGImageElement>("image");
 
       for (const image of Array.from(images)) {
-        setCounterScale(image, planetSpriteScale);
+        setCounterScale(image, spriteScale);
       }
     }
 

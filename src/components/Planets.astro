@@ -34,7 +34,7 @@ import "../styles/solar-system-enhancements.css";
       viewBox="0 0 1000 1000"
       preserveAspectRatio="xMidYMid meet"
       role="group"
-      aria-label="Interactive diagram of the Sun and the eight planets orbiting it"
+      aria-label="Interactive diagram of the Sun, eight planets, and dwarf planet Pluto"
     >
       <defs>
         <radialGradient id="sun-glow-gradient">
@@ -44,38 +44,40 @@ import "../styles/solar-system-enhancements.css";
         </radialGradient>
       </defs>
 
-      <circle
-        class="sun-glow"
-        cx="500"
-        cy="500"
-        r="72"
-        fill="url(#sun-glow-gradient)"
-        aria-hidden="true"
-      />
+      <g id="orbits" aria-label="Planet and dwarf planet orbits"></g>
 
-      <g id="orbits" aria-label="Planet orbits"></g>
+      <g id="sun-artwork" aria-label="The Sun">
+        <circle
+          class="sun-glow"
+          cx="500"
+          cy="500"
+          r="72"
+          fill="url(#sun-glow-gradient)"
+          aria-hidden="true"
+        />
 
-      <circle
-        class="sun-image-fallback"
-        cx="500"
-        cy="500"
-        r="14"
-        aria-hidden="true"
-      />
-      <image
-        id="sun-image"
-        class="sun-image"
-        href="/planets/sun.png"
-        x="476"
-        y="476"
-        width="48"
-        height="48"
-        preserveAspectRatio="xMidYMid meet"
-        role="img"
-        aria-label="The Sun"
-      />
+        <circle
+          class="sun-image-fallback"
+          cx="500"
+          cy="500"
+          r="8"
+          aria-hidden="true"
+        />
+        <image
+          id="sun-image"
+          class="sun-image"
+          href="/planets/sun.png"
+          x="490"
+          y="490"
+          width="20"
+          height="20"
+          preserveAspectRatio="xMidYMid meet"
+          role="img"
+          aria-label="The Sun"
+        />
+      </g>
 
-      <g id="planets" aria-label="Clickable planets"></g>
+      <g id="planets" aria-label="Clickable planets and Pluto"></g>
     </svg>
   </div>
 
@@ -84,7 +86,7 @@ import "../styles/solar-system-enhancements.css";
       Simulation date: <time id="date">Synchronising simulation…</time>
     </p>
     <p class="solar-system-scale-note">
-      Planet sizes and distances are not shown to one common physical scale. Orbital positions are projected from cached or current orbital elements.
+      Planet sizes and distances are not shown to one common physical scale. Pluto is included for completeness. Orbital positions are projected from cached or current orbital elements.
     </p>
   </footer>
 </section>

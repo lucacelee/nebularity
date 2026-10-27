@@ -13,6 +13,7 @@ const {
   dataNotice,
   centreImage,
   moonReferences,
+  moonImagePaths,
   parentId,
   parentName,
   mainStats,
@@ -47,6 +48,8 @@ const {
               bodyName={pageName}
               moons={moonReferences}
               centreImage={centreImage}
+              moonImages={moonImagePaths}
+              isSatellite={Boolean(body.aroundPlanet)}
             />
           </section>
 
