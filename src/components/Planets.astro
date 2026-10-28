@@ -1,0 +1,96 @@
+---
+import "../styles/solar-system.css";
+import "../styles/solar-system-enhancements.css";
+---
+
+<section class="solar-system-stage" aria-labelledby="solar-system-heading">
+  <header class="solar-system-stage-header">
+    <div>
+      <p class="stage-eyebrow">LIVE ORBITAL SIMULATION</p>
+      <h2 id="solar-system-heading">Our neighbourhood in space</h2>
+      <p class="stage-description">
+        Select a planet to inspect it. Zoom in to explore the rocky planets, or reverse time to watch the system move backwards.
+      </p>
+    </div>
+
+    <div class="simulation-actions" aria-label="Animation controls">
+      <button id="toggle-animation" class="simulation-action" type="button">
+        Pause animation
+      </button>
+      <button id="reset-position" class="simulation-action simulation-action-secondary" type="button">
+        Reset to now
+      </button>
+    </div>
+  </header>
+
+  <p id="status" class="solar-system-status" role="status" aria-live="polite">
+    Loading current orbital data…
+  </p>
+
+  <div class="solar-system-viewport">
+    <svg
+      id="solar-system"
+      class="solar-system-svg"
+      viewBox="0 0 1000 1000"
+      preserveAspectRatio="xMidYMid meet"
+      role="group"
+      aria-label="Interactive diagram of the Sun, eight planets, and dwarf planet Pluto"
+    >
+      <defs>
+        <radialGradient id="sun-glow-gradient">
+          <stop offset="0%" stop-color="#ffcb68" stop-opacity="0.34" />
+          <stop offset="55%" stop-color="#ff9b45" stop-opacity="0.12" />
+          <stop offset="100%" stop-color="#ff8b35" stop-opacity="0" />
+        </radialGradient>
+      </defs>
+
+      <g id="orbits" aria-label="Planet and dwarf planet orbits"></g>
+
+      <g id="sun-artwork" aria-label="The Sun">
+        <circle
+          class="sun-glow"
+          cx="500"
+          cy="500"
+          r="72"
+          fill="url(#sun-glow-gradient)"
+          aria-hidden="true"
+        />
+
+        <circle
+          class="sun-image-fallback"
+          cx="500"
+          cy="500"
+          r="8"
+          aria-hidden="true"
+        />
+        <image
+          id="sun-image"
+          class="sun-image"
+          href="/planets/sun.png"
+          x="490"
+          y="490"
+          width="20"
+          height="20"
+          preserveAspectRatio="xMidYMid meet"
+          role="img"
+          aria-label="The Sun"
+        />
+      </g>
+
+      <g id="planets" aria-label="Clickable planets and Pluto"></g>
+    </svg>
+  </div>
+
+  <footer class="solar-system-stage-footer">
+    <p class="solar-system-time">
+      Simulation date: <time id="date">Synchronising simulation…</time>
+    </p>
+    <p class="solar-system-scale-note">
+      Planet sizes and distances are not shown to one common physical scale. Pluto is included for completeness. Orbital positions are projected from cached or current orbital elements.
+    </p>
+  </footer>
+</section>
+
+<script>
+  import "../scripts/solar-system";
+</script>

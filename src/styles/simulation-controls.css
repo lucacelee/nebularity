@@ -1,0 +1,49 @@
+.simulation-controls {
+  display: grid;
+  gap: 0.55rem;
+  min-width: min(100%, 300px);
+  color: #e6eefc;
+}
+
+.simulation-control-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.simulation-control-heading label {
+  color: #e6eefc;
+  font-size: 0.9rem;
+  font-weight: 650;
+}
+
+.simulation-control-heading output {
+  color: #a9c6f7;
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+#simulation-speed {
+  width: 100%;
+  margin: 0.15rem 0;
+  accent-color: #90baff;
+  cursor: pointer;
+}
+
+.simulation-speed-endpoints {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  color: #8295b2;
+  font-size: 0.7rem;
+}
+
+.simulation-controls p {
+  margin: 0;
+  max-width: 30rem;
+  color: #8193ad;
+  font-size: 0.76rem;
+  line-height: 1.5;
+}

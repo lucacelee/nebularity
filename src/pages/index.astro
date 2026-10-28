@@ -1,17 +1,58 @@
 ---
-import Footer from '../components/Footer.astro';
-import Welcome from '../components/Welcome.astro';
-import Layout from '../layouts/Layout.astro';
-
-// Welcome to Astro! Wondering what to do next? Check out the Astro documentation at https://docs.astro.build
-// Don't want to use any of this? Delete everything in this file, the `assets`, `components`, and `layouts` directories, and start fresh.
+import Footer from "../components/Footer.astro";
+import Planets from "../components/Planets.astro";
+import ScaleControl from "../components/ScaleControl.astro";
+import SimulationControls from "../components/SimulationControls.astro";
+import Layout from "../layouts/Layout.astro";
+import "../styles/home-page.css";
+import "../styles/view-transitions.css";
 ---
-<head>
-	<link rel="preload" href="../images/button.png" as="image" type="image/png" />
-	<link rel="preload" href="../images/button_press.png" as="image" type="image/png" />
-	<link rel="preload" href="../images/button_hover.png" as="image" type="image/png" />
-</head>
-<Layout>
-	<Welcome />
-	<Footer />
+
+<Layout title="Nebularity │ Explore the Solar System">
+  <div class="home-page">
+    <header class="home-page-header">
+      <a class="wordmark" href="/" aria-label="Nebularity home">
+        <span class="wordmark-mark" aria-hidden="true">
+          <svg
+            data-slot="icon"
+            aria-hidden="true"
+            fill="#7faaf0"
+            viewBox="0 0 24 24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              clip-rule="evenodd"
+              d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.006 5.404.434c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.415-2.212.749-2.305l5.404-.434 2.082-5.005Z"
+              fill-rule="evenodd"></path>
+          </svg>
+        </span>
+        <span>Nebularity</span>
+      </a>
+
+      <div class="home-title-block">
+        <p class="home-eyebrow">AN INTERACTIVE CELESTIAL ATLAS</p>
+        <h1>Explore the Solar System</h1>
+        <p class="home-intro">
+          Follow the planets through time, zoom into the inner worlds, and open
+          a body to explore its moons and physical data.
+        </p>
+      </div>
+    </header>
+
+    <main class="home-main">
+      <Planets />
+
+      <section class="home-controls" aria-label="View and simulation settings">
+        <ScaleControl />
+        <div class="home-controls-divider" aria-hidden="true"></div>
+        <SimulationControls />
+      </section>
+    </main>
+
+    <!-- <Footer /> -->
+  </div>
 </Layout>
+
+<script>
+  import "../scripts/body-transition-links";
+</script>

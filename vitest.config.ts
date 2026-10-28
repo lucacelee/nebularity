@@ -3,7 +3,7 @@ import { defineConfig } from 'vitest/config'
 export default defineConfig({
   test: {
     exclude: [
-        'cdk/**',
+        'cdk/node_modules/**',
         'node_modules/**'
     ]
   },

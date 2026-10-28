@@ -1,0 +1,338 @@
+body {
+  background-color: #080b16;
+}
+
+.body-page {
+  --page-bg: #070d19;
+  --panel-text: #eff5ff;
+  --muted-text: #94a6c2;
+  min-height: 100vh;
+  padding: clamp(1.1rem, 3vw, 2.6rem) clamp(1rem, 4vw, 3.5rem) 4rem;
+  color: var(--panel-text);
+  background:
+    radial-gradient(ellipse at 22% 35%, rgba(27, 63, 113, 0.23), transparent 42rem),
+    radial-gradient(ellipse at 85% 7%, rgba(63, 45, 106, 0.18), transparent 35rem),
+    var(--page-bg);
+}
+
+.body-page-inner {
+  width: min(100%, 1720px);
+  margin-inline: auto;
+}
+
+.body-breadcrumb {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.9rem;
+  min-height: 2rem;
+  margin-bottom: clamp(1rem, 2.4vw, 2rem);
+}
+
+.back-link,
+.parent-link a {
+  color: #b8d4ff;
+  text-decoration: none;
+  transition: color 160ms ease;
+}
+
+.back-link:hover,
+.parent-link a:hover {
+  color: #ffffff;
+}
+
+.parent-link {
+  color: var(--muted-text);
+  font-size: 0.9rem;
+}
+
+.body-explorer {
+  display: grid;
+  grid-template-columns: minmax(0, 1.12fr) minmax(340px, 0.88fr);
+  align-items: start;
+  gap: clamp(1.3rem, 4vw, 4.5rem);
+}
+
+/* No card frame around the orbital art: it blends into the page background. */
+.orbital-panel {
+  position: sticky;
+  top: 1.5rem;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  overflow: visible;
+}
+
+.orbital-panel-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-inline: clamp(0rem, 2vw, 1.5rem);
+}
+
+.panel-eyebrow,
+.details-eyebrow {
+  margin: 0;
+  color: #93b9f3;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+}
+
+.orbit-count {
+  color: var(--muted-text);
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.body-details {
+  min-width: 0;
+  padding-top: 0.4rem;
+}
+
+.details-heading h1 {
+  margin: 0.7rem 0 0.45rem;
+  font-size: clamp(2.4rem, 5vw, 4.7rem);
+  font-weight: 650;
+  letter-spacing: -0.055em;
+  line-height: 1;
+  text-wrap: balance;
+}
+
+.body-type {
+  width: fit-content;
+  margin: 0.7rem 0 0;
+  border: 1px solid rgba(160, 194, 243, 0.24);
+  border-radius: 999px;
+  padding: 0.3rem 0.75rem;
+  color: #c9dcfa;
+  background: rgba(65, 91, 133, 0.17);
+  font-size: 0.82rem;
+}
+
+.alternate-name,
+.body-summary {
+  color: var(--muted-text);
+  line-height: 1.65;
+}
+
+.body-summary {
+  max-width: 44rem;
+  margin: 1rem 0 0;
+}
+
+.body-data-notice {
+  margin: 1.2rem 0 0;
+  border-left: 2px solid rgba(150, 189, 248, 0.6);
+  padding: 0.25rem 0 0.25rem 0.8rem;
+  color: #b4c5dd;
+  font-size: 0.86rem;
+  line-height: 1.55;
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.65rem;
+  margin: 1.7rem 0 2rem;
+}
+
+.stat-card {
+  min-width: 0;
+  padding: 0.95rem 0.9rem;
+  border: 1px solid rgba(150, 180, 224, 0.13);
+  border-radius: 0.8rem;
+  background: rgba(19, 31, 51, 0.58);
+}
+
+.stat-card h2 {
+  margin: 0 0 0.6rem;
+  color: var(--muted-text);
+  font-size: 0.75rem;
+  font-weight: 550;
+}
+
+.stat-card p {
+  margin: 0;
+  color: #f3f7ff;
+  font-size: clamp(0.88rem, 1.1vw, 1.1rem);
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+
+.detail-section {
+  margin-top: 1.8rem;
+}
+
+.detail-section-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.6rem;
+}
+
+.detail-section-heading h2 {
+  margin: 0;
+  font-size: 1.08rem;
+  font-weight: 630;
+}
+
+.detail-section-heading > span {
+  color: var(--muted-text);
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.fact-list {
+  margin: 0;
+  border-top: 1px solid rgba(154, 180, 219, 0.15);
+}
+
+.fact-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+  gap: 1rem;
+  padding: 0.78rem 0;
+  border-bottom: 1px solid rgba(154, 180, 219, 0.12);
+}
+
+.fact-row dt {
+  color: var(--muted-text);
+  font-size: 0.87rem;
+}
+
+.fact-row dd {
+  margin: 0;
+  color: #e4edfb;
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+
+.muted-note {
+  color: var(--muted-text);
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.body-moon-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.45rem 0.65rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.body-moon-list a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  min-width: 0;
+  border: 1px solid rgba(154, 180, 219, 0.12);
+  border-radius: 0.6rem;
+  padding: 0.65rem 0.7rem;
+  color: #dbe8fb;
+  background: rgba(17, 29, 49, 0.42);
+  text-decoration: none;
+  transition: border-color 160ms ease, background 160ms ease;
+}
+
+.body-moon-list a:hover {
+  border-color: rgba(143, 185, 248, 0.45);
+  background: rgba(43, 67, 103, 0.45);
+}
+
+.body-moon-list a > span:first-child {
+  overflow-wrap: anywhere;
+}
+
+.moon-link-arrow {
+  color: #8fb8f5;
+  flex: 0 0 auto;
+}
+
+.data-source {
+  margin-top: 2rem;
+  color: var(--muted-text);
+  font-size: 0.8rem;
+  line-height: 1.7;
+}
+
+.data-source a {
+  color: #abcaff;
+  text-decoration: none;
+}
+
+.data-source a:hover {
+  text-decoration: underline;
+}
+
+.body-load-error {
+  max-width: 44rem;
+  margin: 8vh auto;
+  padding: clamp(1.5rem, 4vw, 3rem);
+  border: 1px solid rgba(150, 180, 224, 0.15);
+  border-radius: 1rem;
+  background: rgba(19, 31, 51, 0.58);
+}
+
+.body-load-error h1 {
+  margin: 0.7rem 0;
+  font-size: clamp(2rem, 5vw, 3.4rem);
+}
+
+.body-load-error p:not(.details-eyebrow) {
+  color: var(--muted-text);
+  line-height: 1.65;
+}
+
+@media (max-width: 900px) {
+  .body-explorer {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .orbital-panel {
+    position: static;
+    width: min(100%, 720px);
+    margin-inline: auto;
+  }
+
+  .body-details {
+    width: min(100%, 720px);
+    margin-inline: auto;
+  }
+}
+
+@media (max-width: 560px) {
+  .body-page {
+    padding-inline: 1rem;
+  }
+
+  .stat-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .body-moon-list {
+    grid-template-columns: 1fr;
+  }
+
+  .fact-row {
+    grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .back-link,
+  .parent-link a,
+  .body-moon-list a {
+    transition: none;
+  }
+}

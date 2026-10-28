@@ -1,0 +1,98 @@
+---
+import "../styles/moon-system.css";
+import type { ResolvedMoonReference } from "../lib/solar-system-data";
+
+interface Props {
+  bodyId: string;
+  bodyName: string;
+  moons: ResolvedMoonReference[];
+  centreImage?: string;
+  moonImages?: Record<string, string>;
+  isSatellite?: boolean;
+}
+
+const {
+  bodyId,
+  bodyName,
+  moons,
+  centreImage,
+  moonImages = {},
+  isSatellite = false,
+} = Astro.props;
+const initialOrbitCount = 12;
+---
+
+<div
+  class="moon-system"
+  data-moon-system
+  data-parent-id={bodyId}
+  data-parent-name={bodyName}
+  data-moons={JSON.stringify(moons)}
+  data-moon-images={JSON.stringify(moonImages)}
+  data-is-satellite={isSatellite ? "true" : "false"}
+  data-initial-orbit-count={initialOrbitCount}
+>
+  <svg
+    class="moon-system-svg"
+    viewBox="0 0 420 420"
+    role="group"
+    aria-label={`Interactive orbital view of ${bodyName} and its moons`}
+  >
+    <defs>
+      <radialGradient id="moon-system-glow">
+        <stop offset="0%" stop-color="#9ac7ff" stop-opacity="0.2" />
+        <stop offset="100%" stop-color="#9ac7ff" stop-opacity="0" />
+      </radialGradient>
+    </defs>
+
+    <circle class="moon-system-glow" cx="210" cy="210" r="68" fill="url(#moon-system-glow)" />
+    <g class="moon-orbits" data-moon-orbits aria-hidden="true"></g>
+    <g class="moon-markers" data-moon-markers></g>
+
+    <circle
+      class="moon-system-centre-fallback"
+      cx="210"
+      cy="210"
+      r="22"
+      style={centreImage
+        ? "visibility: hidden; view-transition-name: none;"
+        : `view-transition-name: body-${bodyId};`}
+      aria-label={bodyName}
+    />
+
+    {centreImage && (
+      <image
+        class="moon-system-centre-image"
+        href={centreImage}
+        x="166"
+        y="166"
+        width="88"
+        height="88"
+        preserveAspectRatio="xMidYMid meet"
+        style={`view-transition-name: body-${bodyId};`}
+        aria-label={bodyName}
+      />
+    )}
+  </svg>
+
+  <div class="moon-system-footer">
+    <p class="moon-system-note">
+      Orbital shapes and current positions use available NASA/JPL elements. The scale is normalised to fit this panel.
+    </p>
+    <p class="moon-system-status" data-moon-system-status aria-live="polite">
+      {moons.length === 0 ? "No moon references are available for this body." : "Preparing moon orbits…"}
+    </p>
+    <button
+      class="moon-system-more"
+      type="button"
+      data-moon-system-more
+      hidden={moons.length <= initialOrbitCount}
+    >
+      Load more moon orbits
+    </button>
+  </div>
+</div>
+
+<script>
+  import "../scripts/moon-system";
+</script>

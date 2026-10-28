@@ -1,0 +1,31 @@
+---
+import "../styles/simulation-controls.css";
+---
+
+<section class="simulation-controls" aria-label="Simulation controls">
+  <div class="simulation-control-heading">
+    <label for="simulation-speed">Simulation speed</label>
+    <output id="simulation-speed-value" for="simulation-speed">10 days/s</output>
+  </div>
+
+  <input
+    id="simulation-speed"
+    name="simulation-speed"
+    type="range"
+    min="-1000"
+    max="1000"
+    step="1"
+    value="10"
+    aria-describedby="simulation-speed-help"
+  />
+
+  <div class="simulation-speed-endpoints" aria-hidden="true">
+    <span>Reverse time</span>
+    <span>Pause</span>
+    <span>Forward time</span>
+  </div>
+
+  <p id="simulation-speed-help">
+    Negative values run time backwards. Zero pauses the simulation clock; the Pause button stops animation updates entirely.
+  </p>
+</section>

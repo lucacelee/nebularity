@@ -1,0 +1,118 @@
+.home-page {
+  --nebula-text: #eef4ff;
+  --nebula-muted: #96a8c4;
+  --nebula-blue: #a9cbff;
+  min-height: 100vh;
+  padding: clamp(1.25rem, 3vw, 3rem) clamp(1rem, 4vw, 4rem) 2rem;
+  color: var(--nebula-text);
+  background:
+    radial-gradient(ellipse at 18% 18%, rgba(31, 68, 125, 0.28), transparent 40rem),
+    radial-gradient(ellipse at 82% 12%, rgba(75, 43, 118, 0.2), transparent 36rem),
+    #060b15;
+}
+
+.home-page .home-main {
+  display: block;
+  width: min(100%, 1500px);
+  max-width: none;
+  margin: 0 auto;
+}
+
+.home-page-header {
+  width: min(100%, 1500px);
+  margin: 0 auto clamp(1.3rem, 3vw, 2.5rem);
+}
+
+.wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  color: #dce9ff;
+  font-size: 0.88rem;
+  font-weight: 750;
+  letter-spacing: 0.12em;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
+.wordmark-mark {
+  color: #a8caff;
+  display: inline-block;
+  min-width: 1rem;
+  min-height: 1rem;
+  font-size: 1.25rem;
+}
+
+.home-title-block {
+  max-width: 55rem;
+  margin-top: clamp(1.8rem, 4vw, 3.3rem);
+}
+
+.home-eyebrow {
+  margin: 0 0 0.75rem;
+  color: #8eb5f5;
+  font-size: 0.72rem;
+  font-weight: 750;
+  letter-spacing: 0.2em;
+}
+
+.home-title-block h1 {
+  margin: 0;
+  color: #f5f8ff;
+  font-size: clamp(2.3rem, 6vw, 5rem);
+  font-weight: 680;
+  letter-spacing: -0.06em;
+  line-height: 0.98;
+  text-wrap: balance;
+  text-align: left;
+}
+
+.home-intro {
+  max-width: 43rem;
+  margin: 1.1rem 0 0;
+  color: var(--nebula-muted);
+  font-size: clamp(0.98rem, 1.45vw, 1.12rem);
+  line-height: 1.75;
+}
+
+.home-controls {
+  display: grid;
+  grid-template-columns: minmax(230px, 0.8fr) 1px minmax(300px, 1.2fr);
+  align-items: start;
+  gap: clamp(1.2rem, 3vw, 3rem);
+  width: min(100%, 1200px);
+  margin: 1.5rem auto 2.5rem;
+  border: 1px solid rgba(136, 166, 211, 0.15);
+  border-radius: 1rem;
+  padding: clamp(1rem, 2.5vw, 1.75rem);
+  background: linear-gradient(135deg, rgba(16, 27, 46, 0.8), rgba(8, 16, 29, 0.64));
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.15);
+}
+
+.home-controls-divider {
+  width: 1px;
+  align-self: stretch;
+  background: rgba(146, 173, 215, 0.16);
+}
+
+.home-page > footer {
+  width: min(100%, 1500px);
+  margin-inline: auto;
+}
+
+@media (max-width: 760px) {
+  .home-controls {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .home-controls-divider {
+    width: 100%;
+    height: 1px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-page * {
+    scroll-behavior: auto;
+  }
+}
