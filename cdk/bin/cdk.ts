@@ -28,4 +28,5 @@ new EcsStack(app, 'EcsStack', {
   env: { account: '838029584989', region: 'us-east-1' },
   repository: ecrStack.repository,
   certificateArn: app.node.tryGetContext('certificateArn'),
+  alertEmail: process.env.ALERT_EMAIL,
 });
